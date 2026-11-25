@@ -22,35 +22,50 @@ from urllib.parse import urlparse, parse_qs
 
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
+import faces  # noqa: E402
 import fmreader  # noqa: E402
 
 __version__ = '1.0.0'
 HOST, PORT = '127.0.0.1', 8770
 WEB = ROOT / 'web'
 TYPES = {'.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
-         '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon'}
+         '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon',
+         '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp'}
 _lock = threading.Lock()
 _state: dict = {'players': [], 'by_uid': {}, 'meta': None, 'erro': None, 'erro_code': None}
 
 LIST_FIELDS = ('uid', 'nome', 'ca', 'pa', 'nacao', 'nacao_sigla', 'nasc_ano', 'clube', 'clube_uid',
-               'contrato_ano', 'livre', 'lista_transf', 'lista_emprest', 'feminino', 'pos', 'pe')
+               'contrato_ano', 'livre', 'lista_transf', 'lista_emprest', 'feminino', 'pos', 'pe',
+               'pre_clube', 'pre_ano')
 
 
 def refresh() -> None:
     with _lock:
-        try:
-            players, meta = fmreader.snapshot()
-            _state.update(players=players, by_uid={p['uid']: p for p in players}, meta=meta,
-                          erro=None, erro_code=None)
-        except fmreader.FMNotRunning as e:
-            _state.update(erro=str(e), erro_code=e.code)
-        except Exception as e:  # noqa: BLE001
-            _state.update(erro=f'Error reading FM: {e}', erro_code='read_error')
+        _read()
+
+
+def ensure_loaded() -> None:
+    """First read of the save; concurrent callers wait for it instead of reading twice."""
+    with _lock:
+        if not _state['meta'] and not _state['erro']:
+            _read()
+
+
+def _read() -> None:
+    try:
+        players, meta = fmreader.snapshot()
+        _state.update(players=players, by_uid={p['uid']: p for p in players}, meta=meta,
+                      erro=None, erro_code=None)
+    except fmreader.FMNotRunning as e:
+        _state.update(erro=str(e), erro_code=e.code)
+    except Exception as e:  # noqa: BLE001
+        _state.update(erro=f'Error reading FM: {e}', erro_code='read_error')
 
 
 def list_payload() -> dict:
-    rows = [[p[k] for k in LIST_FIELDS] for p in _state['players']]
-    return {'campos': LIST_FIELDS, 'linhas': rows, 'meta': _state['meta'], 'erro': _state['erro'],
+    faces.wait(10)
+    rows = [[p[k] for k in LIST_FIELDS] + [faces.has(p['uid'])] for p in _state['players']]
+    return {'campos': LIST_FIELDS + ('foto',), 'linhas': rows, 'meta': _state['meta'], 'erro': _state['erro'],
             'erro_code': _state['erro_code'], 'version': __version__}
 
 
@@ -58,8 +73,8 @@ def player_payload(uid: int) -> dict:
     p = _state['by_uid'].get(uid)
     if not p:
         return {'erro': 'Player not found (refresh the data).', 'erro_code': 'player_not_found'}
-    return {**{k: p[k] for k in LIST_FIELDS}, 'contrato_dia': p['contrato_dia'], 'nasc_dia': p['nasc_dia'],
-            'attrs': p['attrs'], 'groups': fmreader.GROUP_INDEX}
+    return {**{k: p[k] for k in LIST_FIELDS}, 'contrato_dia': p['contrato_dia'], 'pre_dia': p['pre_dia'], 'nasc_dia': p['nasc_dia'],
+            'foto': faces.has(uid), 'attrs': p['attrs'], 'groups': fmreader.GROUP_INDEX}
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -88,8 +103,7 @@ class Handler(BaseHTTPRequestHandler):
                 _app['last_ping'] = time.monotonic()
             return self._json({'app': 'pitchlens', 'version': __version__})
         if url.path == '/api/players':
-            if not _state['meta'] and not _state['erro']:
-                refresh()
+            ensure_loaded()
             return self._json(list_payload())
         if url.path == '/api/refresh':
             refresh()
@@ -100,6 +114,21 @@ class Handler(BaseHTTPRequestHandler):
             except ValueError:
                 uid = 0
             return self._json(player_payload(uid))
+        if url.path == '/api/face':
+            try:
+                f = faces.path(int(parse_qs(url.query).get('uid', ['0'])[0]))
+            except ValueError:
+                f = None
+            if f and os.path.isfile(f):
+                body = Path(f).read_bytes()
+                self.send_response(200)
+                self.send_header('Content-Type', TYPES.get(Path(f).suffix.lower(), 'image/jpeg'))
+                self.send_header('Content-Length', str(len(body)))
+                self.send_header('Cache-Control', 'max-age=86400')
+                self.end_headers()
+                self.wfile.write(body)
+                return None
+            return self._send(404, b'no face', 'text/plain')
         name = 'index.html' if url.path in ('/', '') else url.path.lstrip('/')
         target = (WEB / name).resolve()
         if WEB.resolve() in target.parents and target.is_file():   # no path traversal
@@ -143,6 +172,8 @@ def run_app() -> None:
         return
     while not _free(port):
         port += 1
+    faces.start()
+    threading.Thread(target=ensure_loaded, daemon=True).start()   # start reading the save right away
     srv = ThreadingHTTPServer((HOST, port), Handler)
     _app['server'] = srv
     if '--server' not in sys.argv:            # started by hand (not by Pitchlens.exe): use the default browser
@@ -177,6 +208,7 @@ def main() -> None:
         return
     while not _free(port):
         port += 1
+    faces.start()
     srv = ThreadingHTTPServer((HOST, port), Handler)
     url = f'http://{HOST}:{port}'
     print(f'Pitchlens {__version__} running at {url}  (close this window to stop)')

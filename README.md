@@ -33,6 +33,9 @@ open source and with **zero dependencies**: just Python and your browser.
 
 | | |
 |---|---|
+| 🤝 **Pre-contracts** | See who already signed for another club (`→ Club`, with the start date) and filter by it |
+| 🖼️ **Player photos** | Uses your installed face pack automatically (initials when there is no photo) |
+| 🔍 **Global search** | Typing a name or club searches every player in the save, whatever filters are on |
 | 🔎 **Smart filters** | Free agents, contract ending this season, transfer listed, loan listed, shortlist, nationality, sex, preferred foot |
 | 📊 **Ability ranges with histograms** | CA, PA, growth margin (PA − CA) and age, each with a live distribution chart |
 | ⚽ **Position picker** | Click positions on a pitch; choose *Natural*, *Accomplished* or *Unconvincing* familiarity |

@@ -7,7 +7,7 @@ const URLP = new URLSearchParams(location.search);
 // grid on the mini pitch: [column 1..5, row 1..7], attack on top
 const GRID = {12:[3,1],9:[1,2],10:[3,2],11:[5,2],6:[1,3],7:[3,3],8:[5,3],13:[1,4],5:[3,4],14:[5,4],2:[1,5],3:[3,5],4:[5,5],1:[3,6],0:[3,7]};
 const PXY = {0:[50,92],1:[50,80],2:[14,70],3:[50,70],4:[86,70],13:[14,56],14:[86,56],5:[50,57],6:[14,41],7:[50,42],8:[86,41],9:[17,26],10:[50,26],11:[83,26],12:[50,10]};
-const SIT = [['livre','sit_free','#22c55e'],['fim','sit_end','#a78bfa'],['transf','sit_tl','#f59e0b'],['emprest','sit_ll','#38bdf8'],['fav','sit_fav','#facc15'],['todos','sit_all','#64748b']];
+const SIT = [['livre','sit_free','#22c55e'],['fim','sit_end','#a78bfa'],['transf','sit_tl','#f59e0b'],['emprest','sit_ll','#38bdf8'],['pre','sit_pre','#f472b6'],['fav','sit_fav','#facc15'],['todos','sit_all','#64748b']];
 const RANGES = [['rCA','ca','ca',0,200],['rPA','pa','pa',0,200],['rGAP','gap','gap',0,120],['rID','id','age',14,45]];
 const RADAR = {
   field: [['ax_finishing',[2,4,6]],['ax_technique',[23,1,22]],['ax_creativity',[7,10,26,18]],['ax_defending',[9,5,20,17]],
@@ -40,11 +40,18 @@ function tone(v, max = 200) { const r = v / max; return r >= .75 ? '#22c55e' : r
 const tone20 = v => tone(v, 20);
 const rating = v => { const c = tone(v); return `<span class="rating" style="background:${c}1f;color:${c}">${v}</span>`; };
 function initials(n) { const w = String(n).split(/\s+/).filter(Boolean); return ((w[0] || '?')[0] + (w.length > 1 ? w[w.length - 1][0] : '')).toUpperCase(); }
-function avatar(p) { const h = (p.uid * 47) % 360; return `<div class="av" style="background:linear-gradient(135deg,hsl(${h} 58% 46%),hsl(${(h + 40) % 360} 62% 36%))">${esc(initials(p.nome))}</div>`; }
+function avatar(p) {
+  const h = (p.uid * 47) % 360, img = p.foto ? `<img src="/api/face?uid=${p.uid}" alt="" loading="lazy" decoding="async" onload="faceOk(this)" onerror="faceFail(this)">` : '';
+  return `<div class="av" style="--h1:hsl(${h} 58% 46%);--h2:hsl(${(h + 40) % 360} 62% 36%)"><span>${esc(initials(p.nome))}</span>${img}</div>`;
+}
+function faceOk(img) { img.parentNode.classList.add('ph'); }
+function faceFail(img) { img.style.display = 'none'; }
 const natural = p => p.pos.map((v, i) => [v, i]).filter(x => x[0] >= 15).sort((a, b) => b[0] - a[0]);
 const FOOT_LBL = {L: ['L', 'E'], R: ['R', 'D'], B: ['B', 'A']};
 function footTag(p) { const f = FOOT_LBL[p.pe]; if (!f) return ''; const title = {L: t('left'), R: t('right'), B: t('both')}[p.pe]; return `<span class="pt foot" title="${esc(title)}">${LANG() === 'pt' ? f[1] : f[0]}</span>`; }
-function listTags(p) { return (p.lista_transf ? `<span class="tag tl">${LANG() === 'pt' ? 'Transf.' : 'TL'}</span>` : '') + (p.lista_emprest ? `<span class="tag ll">${LANG() === 'pt' ? 'Empr.' : 'LL'}</span>` : ''); }
+function preDate(p) { if (!p.pre_ano) return ''; if (!p.pre_dia) return String(p.pre_ano); const d = new Date(p.pre_ano, 0, p.pre_dia); return d.toLocaleDateString(LANG() === 'pt' ? 'pt-BR' : 'en-GB'); }
+function preTag(p) { return p.pre_clube ? `<span class="tag pre" title="${esc(t('preTitle', {c: p.pre_clube, d: preDate(p)}))}">→ ${esc(p.pre_clube)}</span>` : ''; }
+function listTags(p) { return preTag(p) + (p.lista_transf ? `<span class="tag tl">${LANG() === 'pt' ? 'Transf.' : 'TL'}</span>` : '') + (p.lista_emprest ? `<span class="tag ll">${LANG() === 'pt' ? 'Empr.' : 'LL'}</span>` : ''); }
 const STAR = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="m12 2.8 2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2l-5.7 3.1 1.2-6.4-4.7-4.4 6.4-.8z"/></svg>';
 function toast(msg) { const el = $('#toast'); el.textContent = msg; el.classList.add('on'); clearTimeout(toast.tm); toast.tm = setTimeout(() => el.classList.remove('on'), 1600); }
 function gameDateText() {
@@ -110,27 +117,33 @@ function buildPitch() {
 // ---------- filtering
 function apply() {
   const q = norm(F.q), ano = gameYear(), pm = +F.posMin;
-  const cnt = {livre:0, fim:0, transf:0, emprest:0, fav:0, todos:0};
+  const cnt = {livre:0, fim:0, transf:0, emprest:0, pre:0, fav:0, todos:0};
   VIEW = []; BASE = [];
   const sitOk = p => F.sit === 'todos' || (F.sit === 'livre' && p.livre) || (F.sit === 'fim' && !p.livre && p.contrato_ano === ano)
-    || (F.sit === 'transf' && p.lista_transf) || (F.sit === 'emprest' && p.lista_emprest) || (F.sit === 'fav' && FAV.has(p.uid));
+    || (F.sit === 'transf' && p.lista_transf) || (F.sit === 'emprest' && p.lista_emprest) || (F.sit === 'pre' && p.pre_clube) || (F.sit === 'fav' && FAV.has(p.uid));
   for (const p of ALL) {
+    if (q) {                                   // global search: ignores every other filter
+      if (!p._n.includes(q) && !p._c.includes(q) && !norm(p.pre_clube || '').includes(q)) continue;
+      p.gap = p.pa - p.ca; p.idade = p.nasc_ano ? ano - p.nasc_ano : 0;
+      cnt.todos++; BASE.push(p); VIEW.push(p); continue;
+    }
     if (F.nat && p.nacao !== F.nat) continue;
     if ((F.sexo === 'M' && p.feminino) || (F.sexo === 'F' && !p.feminino)) continue;
     if (F.pe && p.pe !== F.pe && !(p.pe === 'B' && F.pe !== 'B')) continue;
     if (F.pos.length && !F.pos.some(i => p.pos[i] >= pm)) continue;
-    if (q && !p._n.includes(q) && !p._c.includes(q)) continue;
     p.gap = p.pa - p.ca; p.idade = p.nasc_ano ? ano - p.nasc_ano : 0;
     const inR = p.ca >= F.ca[0] && p.ca <= F.ca[1] && p.pa >= F.pa[0] && p.pa <= F.pa[1] && p.gap >= F.gap[0]
       && (p.gap <= F.gap[1] || F.gap[1] === 120) && p.idade >= F.id[0] && p.idade <= F.id[1];
     if (inR) {
       cnt.todos++; if (p.livre) cnt.livre++; else if (p.contrato_ano === ano) cnt.fim++;
-      if (p.lista_transf) cnt.transf++; if (p.lista_emprest) cnt.emprest++; if (FAV.has(p.uid)) cnt.fav++;
+      if (p.lista_transf) cnt.transf++; if (p.lista_emprest) cnt.emprest++; if (p.pre_clube) cnt.pre++; if (FAV.has(p.uid)) cnt.fav++;
     }
     if (!sitOk(p)) continue;
     BASE.push(p); if (inR) VIEW.push(p);
   }
-  $$('#sit .opt').forEach(b => { b.querySelector('.n').textContent = ALL.length ? fmt(cnt[b.dataset.v]) : '—'; });
+  $$('#sit .opt').forEach(b => { b.querySelector('.n').textContent = ALL.length && !q ? fmt(cnt[b.dataset.v]) : '—'; });
+  document.body.classList.toggle('searching', !!q);
+  $('#gsearch').textContent = q ? t('searchGlobal', {n: fmt(VIEW.length)}) : '';
   const fimLbl = $('#sit .opt[data-v="fim"] .t'); if (fimLbl) fimLbl.textContent = t('sit_end', {y: ano});
   const k = F.sort, d = F.dir;
   VIEW.sort((a, b) => {
@@ -163,12 +176,12 @@ function render() {
   $('#rows').innerHTML = VIEW.slice(0, shown).map(p => {
     const nat = natural(p).slice(0, 3);
     return `<tr data-uid="${p.uid}"><td><button class="star ${FAV.has(p.uid) ? 'on' : ''}" data-fav="${p.uid}" title="${esc(t(FAV.has(p.uid) ? 'removeFav' : 'addFav'))}">${STAR}</button></td>
-    <td><div class="pl">${avatar(p)}<div><div class="nm">${esc(p.nome)}</div><div class="sub">${p.feminino ? esc(t('female_tag')) + ' · ' : ''}ID ${p.uid}</div></div></div></td>
+    <td><div class="pl">${avatar(p)}<div><div class="nm">${esc(p.nome)}</div><div class="sub">${p.feminino ? esc(t('female_tag')) + ' · ' : ''}${esc(p.nacao_sigla || '')}${p.nacao_sigla ? ' · ' : ''}ID ${p.uid}</div></div></div></td>
     <td><div class="poss">${footTag(p)}${nat.map(([v, i]) => `<span class="pt ${v >= 18 ? 'n' : ''}">${posName(i)}</span>`).join('') || '<span class="sub">—</span>'}</div></td>
     <td class="r">${p.idade || '—'}</td><td class="r">${rating(p.ca)}</td><td class="r">${rating(p.pa)}</td>
     <td class="r gap" style="color:${p.gap >= 25 ? '#22c55e' : p.gap >= 10 ? 'var(--text)' : 'var(--faint)'}">${p.gap > 0 ? '+' : ''}${p.gap}</td>
     <td>${esc(p.nacao)}<span class="flag">${esc(p.nacao_sigla)}</span></td>
-    <td>${p.livre ? `<span class="tag free">${esc(t('free'))}</span>` : `<span class="tag ctr">${esc(p.clube || '—')} · ${p.contrato_ano}</span>`}${listTags(p)}</td></tr>`;
+    <td><div class="ct">${p.livre ? `<span class="tag free">${esc(t('free'))}</span>` : `<span class="cn">${esc(p.clube || '—')}</span><span class="cy">${p.contrato_ano}</span>`}${listTags(p)}</div></td></tr>`;
   }).join('');
   const empty = $('#empty');
   if (!ALL.length && lastErr) { empty.style.display = 'block'; empty.innerHTML = onboarding(); }
@@ -206,7 +219,7 @@ async function openPlayer(uid) {
       <div><div class="k">CA</div><div class="v" style="color:${tone(p.ca)}">${p.ca}</div><div class="meter"><i style="width:${p.ca / 2}%;background:${tone(p.ca)}"></i></div></div>
       <div><div class="k">PA</div><div class="v" style="color:${tone(p.pa)}">${p.pa}</div><div class="meter"><i style="width:${p.pa / 2}%;background:${tone(p.pa)}"></i></div></div>
       <div><div class="k">${esc(t('margin'))}</div><div class="v">${p.pa - p.ca > 0 ? '+' : ''}${p.pa - p.ca}</div></div>
-      <div><div class="k">${esc(t('contract'))}</div><div class="v" style="font-size:13px">${p.livre ? `<span class="tag free">${esc(t('free'))}</span>` : esc(p.clube) + `<div class="sub">${esc(t('until'))} ${p.contrato_ano}</div>`}${listTags(p)}</div></div>
+      <div><div class="k">${esc(t('contract'))}</div><div class="v" style="font-size:13px">${p.livre ? `<span class="tag free">${esc(t('free'))}</span>` : esc(p.clube) + `<div class="sub">${esc(t('until'))} ${p.contrato_ano}</div>`}${listTags(p)}${p.pre_clube ? `<div class="sub">${esc(t('preTitle', {c: p.pre_clube, d: preDate(p)}))}</div>` : ''}</div></div>
     </div></div>
     <div class="grid2">
       <div class="card"><h4>${esc(t('profile'))}</h4>${radar(ax)}</div>
@@ -244,7 +257,7 @@ function bigPitch(pos) {
 }
 
 // ---------- data
-async function load(path) {
+async function load(path, tries = 0) {
   const b = $('#refresh'); b.disabled = true; b.innerHTML = `<span class="spin"></span>${esc(t('reading'))}`;
   try {
     const r = await (await fetch(path)).json();
@@ -260,6 +273,8 @@ async function load(path) {
     apply();
     const pid = +URLP.get('p'); if (pid && ALL.length && !$('#drawer').classList.contains('on')) openPlayer(pid);
   } catch {
+    // the first read of a big save can outlast the connection; the server keeps the result, so just ask again
+    if (tries < 4) { await new Promise(r => setTimeout(r, 1500)); return load('/api/players', tries + 1); }
     lastErr = t('err_offline'); setStatus(); render();
   } finally { b.disabled = false; b.textContent = t('refresh'); }
 }
@@ -314,7 +329,7 @@ $('#theme').onclick = () => { F.theme = document.documentElement.dataset.theme =
 $('#lang').onclick = () => { F.lang = LANG() === 'pt' ? 'en' : 'pt'; applyLang(); if (ALL.length) fillNations(); sync(); setStatus(); apply(); };
 $('#shade').onclick = closeDrawer;
 $('#csv').onclick = () => {
-  const cols = ['nome', 'idade', 'ca', 'pa', 'gap', 'nacao', 'clube', 'contrato_ano', 'livre', 'lista_transf', 'lista_emprest', 'pe', 'uid'];
+  const cols = ['nome', 'idade', 'ca', 'pa', 'gap', 'nacao', 'clube', 'contrato_ano', 'livre', 'lista_transf', 'lista_emprest', 'pre_clube', 'pe', 'uid'];
   const lines = [cols.join(';'), ...VIEW.map(p => cols.map(c => `"${String(p[c] ?? '').replace(/"/g, '""')}"`).join(';'))];
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + lines.join('\n')], {type: 'text/csv;charset=utf-8'})); a.download = 'pitchlens.csv'; a.click();
 };

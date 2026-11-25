@@ -14,7 +14,8 @@ fm.exe (game_plugin.dll)  --ReadProcessMemory-->  fmreader.py  -->  scout.py (12
 | File | Role |
 |---|---|
 | `fmreader.py` | Opens `fm.exe` with `PROCESS_VM_READ \| PROCESS_QUERY_INFORMATION`, finds every player object and decodes it. Pure `ctypes`, no dependencies. |
-| `scout.py` | Tiny `http.server` bound to `127.0.0.1`. Routes: `/` (UI), `/api/players`, `/api/refresh`, `/api/player?uid=N`, `/api/ping`. |
+| `scout.py` | Tiny `http.server` bound to `127.0.0.1`. Routes: `/` (UI), `/api/players`, `/api/refresh`, `/api/player?uid=N`, `/api/face?uid=N`, `/api/ping`. Starts reading the save as soon as it starts. |
+| `faces.py` | Player photos from the user's own face pack: finds `Documents\Sports Interactive\Football Manager 27\graphics` (via the Windows *Documents* known folder, so OneDrive redirection works), indexes image files named `<unique ID>.png/.jpg` inside folders whose name contains *face*, *player*, *portrait*, *people*, *person* or *cut* (~1 s for 500k files). Logos and kits are skipped because they also use numeric names. The photos built into FM27 live inside Unity asset bundles and are not read. |
 | `web/` | `index.html`, `style.css`, `app.js`, `i18n.js`. No build step, no CDN, works offline. |
 | `Pitchlens.exe` · `launcher/` | The desktop window (C#, WinForms + WebView2, GUI subsystem so no console). Starts `pythonw Pitchlens.pyw --server --port N` hidden, waits for `/api/ping`, shows the UI, calls `/api/quit` on close, creates Desktop/Start Menu shortcuts on the first run. Rebuild with `launcher\build.bat` (uses the `csc.exe` that ships with Windows). |
 | `runtime/` | Microsoft WebView2 SDK 1.0.4370.26 (`Core`, `WinForms`, x64 `WebView2Loader.dll`) from NuGet, signed by Microsoft, BSD-style license. |
@@ -70,6 +71,10 @@ Offsets are relative to the object start (where the vtable pointer is).
 | `+0x44` | start date (day & 0x1FF, year) — the newest start shared by 3+ contracts ≈ today's in-game date |
 | `+0x48` | end date (day, year) |
 | `+0x57` | status: `0x01` transfer listed, `0x02` loan listed |
+
+Contracts are found by their own vtable (`game_plugin.dll + 0x4C5DFA8`) in the same heap pass as the players. A player can
+own a second contract object that **starts in the future**: with the same club it is an agreed renewal, with another club
+it is a **pre-contract** already signed (shown as `→ Club`). Placeholder records with an end year of 1900 are ignored.
 
 ### Loan record — vtable `game_plugin.dll + 0x4F2A0F8`
 

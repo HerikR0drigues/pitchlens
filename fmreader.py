@@ -16,6 +16,7 @@ from dataclasses import dataclass, asdict
 # ---------------------------------------------------------------- offsets
 MODULE = 'game_plugin.dll'
 RVA_PLAYER_VTABLE = 0x4E89908          # FM27 27.0.x (Steam) - ver CLAUDE.md
+RVA_CONTRACT_VTABLE = 0x4C5DFA8        # contratos (inclui pre-contratos / renovacoes futuras)
 
 P_UID = 0x0C            # uint32, repetido em +0x10
 P_FLAGS = 0x19          # byte de flags: bit 0x10 = feminino
@@ -27,6 +28,7 @@ P_COMMON = 0x60
 P_NATION = 0x68         # -> Nation: +0x18 nome, +0x28 sigla
 P_BIRTH = 0x88          # uint16 dia do ano, uint16 ano
 P_CONTRACT = 0xA8       # -> Contract (NULL = sem contrato)
+C_PLAYER = 0x08         # Contract -> Player
 C_CLUB = 0x10           # Contract -> Club
 C_START = 0x44          # uint16 dia do ano (& 0x1FF), uint16 ano - inicio do contrato
 C_END = 0x48            # uint16 dia do ano, uint16 ano
@@ -152,6 +154,9 @@ class Player:
     pos: list          # 15 valores 1..20 (ordem POSICOES)
     attrs: list        # 54 valores 1..20 (ordem ATRIBUTOS)
     pe: str            # 'L' / 'R' / 'B'
+    pre_clube: str = ''   # pre-contrato assinado com outro clube (vazio = nenhum)
+    pre_ano: int = 0      # inicio do pre-contrato
+    pre_dia: int = 0
 
 
 class FMReader:
@@ -216,17 +221,22 @@ class FMReader:
                 break
 
     def find_all(self, needle: bytes, align: int = 8) -> list[int]:
-        hits = []
+        return self.find_many([needle], align)[needle]
+
+    def find_many(self, needles: list[bytes], align: int = 8) -> dict[bytes, list[int]]:
+        """One pass over the heap looking for several byte patterns (reading memory is the slow part)."""
+        hits: dict[bytes, list[int]] = {n: [] for n in needles}
         for base, size in self.regions():
             off = 0
             while off < size:
                 chunk = min(64 << 20, size - off)
                 data = self.read(base + off, chunk)
-                i = data.find(needle)
-                while i != -1:
-                    if (base + off + i) % align == 0:
-                        hits.append(base + off + i)
-                    i = data.find(needle, i + 1)
+                for needle in needles:
+                    i = data.find(needle)
+                    while i != -1:
+                        if (base + off + i) % align == 0:
+                            hits[needle].append(base + off + i)
+                        i = data.find(needle, i + 1)
                 off += chunk
         return hits
 
@@ -274,14 +284,16 @@ class FMReader:
         return self._clubs[p]
 
     # ------------------------------------------------------------ vtable
-    def player_vtable(self) -> tuple[int, list[int]]:
-        """Tenta o RVA conhecido; se a versao do FM mudou, descobre sozinho."""
+    def player_vtable(self) -> tuple[int, list[int], list[int]]:
+        """Tenta o RVA conhecido; se a versao do FM mudou, descobre sozinho.
+        Devolve (vtable, objetos jogador, objetos contrato)."""
         vt = self.module_base + RVA_PLAYER_VTABLE
-        objs = self.find_all(struct.pack('<Q', vt))
-        if len(objs) > 20000:
-            return vt, objs
-        vt = self.discover_vtable()
-        return vt, self.find_all(struct.pack('<Q', vt))
+        cvt = struct.pack('<Q', self.module_base + RVA_CONTRACT_VTABLE)
+        hits = self.find_many([struct.pack('<Q', vt), cvt])
+        if len(hits[struct.pack('<Q', vt)]) <= 20000:
+            vt = self.discover_vtable()
+            hits = self.find_many([struct.pack('<Q', vt), cvt])
+        return vt, hits[struct.pack('<Q', vt)], hits[cvt]
 
     def discover_vtable(self, sample_bytes: int = 256 << 20) -> int:
         """Procura o ponteiro mais comum para dentro do game_plugin.dll que tenha
@@ -310,7 +322,8 @@ class FMReader:
     # ------------------------------------------------------------ main
     def players(self) -> tuple[list[Player], dict]:
         t0 = time.time()
-        vt, objs = self.player_vtable()
+        vt, objs, contracts = self.player_vtable()
+        by_addr: dict[int, tuple[Player, int, int]] = {}  # player addr -> (player, contrato atual, clube atual)
         out: list[Player] = []
         starts: collections.Counter[tuple[int, int]] = collections.Counter()
         pre = -P_POS
@@ -329,11 +342,12 @@ class FMReader:
             nat, natc = self.nation(q(P_NATION))
             bday, byear = struct.unpack_from('<HH', d, o + P_BIRTH)
             con = q(P_CONTRACT)
-            cuid, cname, cday, cyear, st = 0, '', 0, 0, 0
+            cuid, cname, cday, cyear, st, club_ptr = 0, '', 0, 0, 0, 0
             if _is_ptr(con):
                 cd = self.read(con, 0x60)
                 if len(cd) == 0x60:
-                    cuid, cname = self.club(struct.unpack_from('<Q', cd, C_CLUB)[0])
+                    club_ptr = struct.unpack_from('<Q', cd, C_CLUB)[0]
+                    cuid, cname = self.club(club_ptr)
                     cday, cyear = struct.unpack_from('<HH', cd, C_END)
                     st = cd[C_STATUS]
                     sday, syear = struct.unpack_from('<HH', cd, C_START)
@@ -344,10 +358,35 @@ class FMReader:
                               cname, cuid, cyear, cday, not _is_ptr(con), bool(st & 1), bool(st & 2),
                               bool(d[o + P_FLAGS] & 0x10),
                               list(d[o + P_POS:o + P_POS + 15]), attrs, preferred_foot(attrs)))
+            by_addr[a] = (out[-1], con, club_ptr)
+        game = _game_date(starts)
+        self._pre_contracts(contracts, by_addr, game)
         meta = dict(total=len(out), segundos=round(time.time() - t0, 1),
                     vtable_rva=hex(vt - self.module_base), lido_em=time.strftime('%H:%M:%S'),
-                    **_game_date(starts))
+                    pre_contratos=sum(1 for p in out if p.pre_clube), **game)
         return out, meta
+
+    def _pre_contracts(self, contracts: list[int], by_addr: dict, game: dict) -> None:
+        """A player can have a second contract object that starts in the future. When its club is not
+        the current one, it is a pre-contract (Bosman) already signed - the player is not really available."""
+        today = (game['ano_jogo'], game['dia_jogo']) if game['ano_jogo'] else None
+        for c in contracts:
+            d = self.read(c, 0x4C)
+            if len(d) < 0x4C:
+                continue
+            hit = by_addr.get(struct.unpack_from('<Q', d, C_PLAYER)[0])
+            if not hit or hit[1] == c:
+                continue
+            player, _, cur_club = hit
+            club = struct.unpack_from('<Q', d, C_CLUB)[0]
+            sday, syear = struct.unpack_from('<HH', d, C_START)
+            eyear = struct.unpack_from('<H', d, C_END + 2)[0]
+            start = (syear, sday & 0x1FF)
+            if club == cur_club or not 2000 <= eyear < 2200 or (today and start <= today):
+                continue
+            if not player.pre_clube or start < (player.pre_ano, player.pre_dia):
+                player.pre_clube = self.club(club)[1]
+                player.pre_ano, player.pre_dia = start
 
 
 def _game_date(starts: collections.Counter) -> dict:

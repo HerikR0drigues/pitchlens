@@ -9,8 +9,9 @@ esse arquivo atualizado quando mapear algo novo.
 - `fmreader.py` — leitura da memória (ctypes + WinAPI). Só `PROCESS_VM_READ | PROCESS_QUERY_INFORMATION`.
   **O app nunca escreve no processo.** Constantes de offset no topo; `ATRIBUTOS` (PT) / `ATTRIBUTES_EN`,
   `POSICOES` / `POSITIONS_EN`, `GROUP_INDEX`, `preferred_foot()`, data do jogo estimada em `_game_date()`.
+- `faces.py` — fotos do facepack do usuário (pasta Documentos via Windows, índice uid → arquivo). Fotos nativas do FM27 ficam em bundles do Unity e não são lidas.
 - `scout.py` — servidor `http.server` em `127.0.0.1:8770` (cai para a próxima porta livre; se já houver um scout
-  rodando, só abre o navegador). Rotas: `/`, `/api/ping`, `/api/players`, `/api/refresh`, `/api/player?uid=`,
+  rodando, só abre o navegador). Rotas: `/`, `/api/ping`, `/api/players`, `/api/refresh`, `/api/player?uid=`, `/api/face?uid=`,
   arquivos estáticos de `web/`. Erros vêm com `erro_code` (`not_running`, `no_save`, `access`, `read_error`).
 - `web/` — `index.html`, `style.css`, `app.js`, `i18n.js` (textos EN/PT, nomes de atributos e posições).
   Sem build, sem CDN. Parâmetros de URL: `?lang=en|pt&theme=dark|light&p=<uid>`.
