@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 120" font-family="Inter, system-ui, sans-serif">
+  <rect width="520" height="120" fill="#1a1a1a"/>
+  <g transform="translate(28 32) scale(0.9)" fill="#f0ede6">
+  <path fill-rule="evenodd" d="M38 2 A18 18 0 1 1 37.99 2 Z M38 9.5 A10.5 10.5 0 1 0 38.01 9.5 Z"/>
+  <circle cx="38" cy="20" r="3.6"/>
+  <path d="M19 33 L29.5 38.5 L16 55 L4 55 Z"/>
+  </g>
+  <text x="104" y="76" font-size="44" font-weight="500" letter-spacing="-1" fill="#f0ede6">Pitchlens</text>
+  <line x1="318" y1="36" x2="318" y2="84" stroke="#8a8a88" stroke-width="1"/>
+  <text x="342" y="54" font-size="14" letter-spacing="3" fill="#8a8a88">EVERY PLAYER,</text>
+  <text x="342" y="78" font-size="14" letter-spacing="3" fill="#8a8a88">IN FOCUS.</text>
+</svg>

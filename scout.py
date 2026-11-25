@@ -1,0 +1,192 @@
+"""Pitchlens - local web server (127.0.0.1 only) that reads the running FM27 and serves the UI.
+
+Normal use: double-click Pitchlens.pyw (no console, opens in its own window).
+Developer use:
+        py scout.py               -> opens http://127.0.0.1:8770 in your browser
+        py scout.py --no-browser  -> just start the server
+        py scout.py --port 9000   -> use another port
+"""
+from __future__ import annotations
+
+import json
+import os
+import socket
+import sys
+import threading
+import time
+import urllib.request
+import webbrowser
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+from urllib.parse import urlparse, parse_qs
+
+ROOT = Path(__file__).resolve().parent
+sys.path.insert(0, str(ROOT))
+import fmreader  # noqa: E402
+
+__version__ = '1.0.0'
+HOST, PORT = '127.0.0.1', 8770
+WEB = ROOT / 'web'
+TYPES = {'.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
+         '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon'}
+_lock = threading.Lock()
+_state: dict = {'players': [], 'by_uid': {}, 'meta': None, 'erro': None, 'erro_code': None}
+
+LIST_FIELDS = ('uid', 'nome', 'ca', 'pa', 'nacao', 'nacao_sigla', 'nasc_ano', 'clube', 'clube_uid',
+               'contrato_ano', 'livre', 'lista_transf', 'lista_emprest', 'feminino', 'pos', 'pe')
+
+
+def refresh() -> None:
+    with _lock:
+        try:
+            players, meta = fmreader.snapshot()
+            _state.update(players=players, by_uid={p['uid']: p for p in players}, meta=meta,
+                          erro=None, erro_code=None)
+        except fmreader.FMNotRunning as e:
+            _state.update(erro=str(e), erro_code=e.code)
+        except Exception as e:  # noqa: BLE001
+            _state.update(erro=f'Error reading FM: {e}', erro_code='read_error')
+
+
+def list_payload() -> dict:
+    rows = [[p[k] for k in LIST_FIELDS] for p in _state['players']]
+    return {'campos': LIST_FIELDS, 'linhas': rows, 'meta': _state['meta'], 'erro': _state['erro'],
+            'erro_code': _state['erro_code'], 'version': __version__}
+
+
+def player_payload(uid: int) -> dict:
+    p = _state['by_uid'].get(uid)
+    if not p:
+        return {'erro': 'Player not found (refresh the data).', 'erro_code': 'player_not_found'}
+    return {**{k: p[k] for k in LIST_FIELDS}, 'contrato_dia': p['contrato_dia'], 'nasc_dia': p['nasc_dia'],
+            'attrs': p['attrs'], 'groups': fmreader.GROUP_INDEX}
+
+
+class Handler(BaseHTTPRequestHandler):
+    def log_message(self, *args):
+        pass
+
+    def _send(self, code: int, body: bytes, ctype: str) -> None:
+        self.send_response(code)
+        self.send_header('Content-Type', ctype)
+        self.send_header('Content-Length', str(len(body)))
+        self.send_header('Cache-Control', 'no-store')
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _json(self, obj) -> None:
+        self._send(200, json.dumps(obj, ensure_ascii=False, separators=(',', ':')).encode('utf-8'),
+                   'application/json; charset=utf-8')
+
+    def do_GET(self):  # noqa: N802
+        url = urlparse(self.path)
+        if url.path == '/api/quit':
+            self._json({'ok': True})
+            return _quit_soon()
+        if url.path == '/api/ping':
+            if 'alive' in url.query:
+                _app['last_ping'] = time.monotonic()
+            return self._json({'app': 'pitchlens', 'version': __version__})
+        if url.path == '/api/players':
+            if not _state['meta'] and not _state['erro']:
+                refresh()
+            return self._json(list_payload())
+        if url.path == '/api/refresh':
+            refresh()
+            return self._json(list_payload())
+        if url.path == '/api/player':
+            try:
+                uid = int(parse_qs(url.query).get('uid', ['0'])[0])
+            except ValueError:
+                uid = 0
+            return self._json(player_payload(uid))
+        name = 'index.html' if url.path in ('/', '') else url.path.lstrip('/')
+        target = (WEB / name).resolve()
+        if WEB.resolve() in target.parents and target.is_file():   # no path traversal
+            return self._send(200, target.read_bytes(), TYPES.get(target.suffix, 'application/octet-stream'))
+        return self._send(404, b'not found', 'text/plain')
+
+
+# ---------------------------------------------------------------- desktop app mode
+# Pitchlens.exe starts "pythonw Pitchlens.pyw --server --port N" (no console) and shows the UI in its own
+# WebView2 window; when that window closes it calls /api/quit. If the page stops pinging /api/ping?alive=1
+# for 3 minutes (e.g. the window crashed) the server also stops by itself.
+APP_DIR = Path(os.environ.get('LOCALAPPDATA', str(Path.home()))) / 'Pitchlens'
+_app: dict = {'last_ping': None, 'server': None}
+
+
+def _quit_soon() -> None:
+    srv = _app['server']
+    if srv is not None:
+        threading.Thread(target=srv.shutdown, daemon=True).start()
+
+
+def _watchdog() -> None:
+    started = time.monotonic()
+    while True:
+        time.sleep(5)
+        last = _app['last_ping']
+        if (last is None and time.monotonic() - started > 300) or (last is not None and time.monotonic() - last > 180):
+            return _quit_soon()
+
+
+def run_app() -> None:
+    """Entry point for Pitchlens.pyw (always started without a console)."""
+    APP_DIR.mkdir(parents=True, exist_ok=True)
+    log = open(APP_DIR / 'pitchlens.log', 'a', encoding='utf-8', buffering=1)  # noqa: SIM115
+    sys.stdout = sys.stderr = log
+    print(f'--- {time.strftime("%Y-%m-%d %H:%M:%S")} Pitchlens {__version__} {sys.argv[1:]}')
+    port = int(sys.argv[sys.argv.index('--port') + 1]) if '--port' in sys.argv else PORT
+    if _already_running(port):
+        if '--server' not in sys.argv:
+            webbrowser.open(f'http://{HOST}:{port}')
+        return
+    while not _free(port):
+        port += 1
+    srv = ThreadingHTTPServer((HOST, port), Handler)
+    _app['server'] = srv
+    if '--server' not in sys.argv:            # started by hand (not by Pitchlens.exe): use the default browser
+        webbrowser.open(f'http://{HOST}:{port}')
+    threading.Thread(target=_watchdog, daemon=True).start()
+    srv.serve_forever()
+    print('stopped')
+
+
+def _already_running(port: int) -> bool:
+    try:
+        with urllib.request.urlopen(f'http://{HOST}:{port}/api/ping', timeout=1) as r:
+            return json.load(r).get('app') == 'pitchlens'
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _free(port: int) -> bool:
+    with socket.socket() as s:
+        return s.connect_ex((HOST, port)) != 0
+
+
+def main() -> None:
+    port = PORT
+    if '--port' in sys.argv:
+        port = int(sys.argv[sys.argv.index('--port') + 1])
+    browser = '--no-browser' not in sys.argv
+    if _already_running(port):
+        print(f'Pitchlens is already running at http://{HOST}:{port}')
+        if browser:
+            webbrowser.open(f'http://{HOST}:{port}')
+        return
+    while not _free(port):
+        port += 1
+    srv = ThreadingHTTPServer((HOST, port), Handler)
+    url = f'http://{HOST}:{port}'
+    print(f'Pitchlens {__version__} running at {url}  (close this window to stop)')
+    if browser:
+        threading.Timer(0.6, lambda: webbrowser.open(url)).start()
+    try:
+        srv.serve_forever()
+    except KeyboardInterrupt:
+        pass
+
+
+if __name__ == '__main__':
+    main()

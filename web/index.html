@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pitchlens</title>
+<meta name="description" content="Live scouting for Football Manager 27: search every player in your running save.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand"><svg class="mark" viewBox="0 0 64 56" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M38 2 A18 18 0 1 1 37.99 2 Z M38 9.5 A10.5 10.5 0 1 0 38.01 9.5 Z"/><circle cx="38" cy="20" r="3.6"/><path d="M19 33 L29.5 38.5 L16 55 L4 55 Z"/></svg>Pitchlens<small id="ver"></small></div>
+    <div class="search">
+      <svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="q" data-i18n-ph="search" autocomplete="off"><span class="kbd">/</span>
+    </div>
+    <div class="sp"></div>
+    <span class="status wait" id="status"><span class="d"></span><span id="statusTxt"></span></span>
+    <button class="btn lang" id="lang" title="Language / Idioma"></button>
+    <button class="btn icon" id="theme" data-i18n-title="theme"></button>
+    <button class="btn" id="csv" data-i18n-title="exportCsv">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 3v12m0 0-4-4m4 4 4-4M4 19h16"/></svg>CSV</button>
+    <button class="btn primary" id="refresh" data-i18n="refresh"></button>
+  </header>
+
+  <aside class="side">
+    <div class="sidehead"><div><b data-i18n="filters"></b><span class="cnt" id="fcount">0</span></div><button class="link" id="reset" data-i18n="clearAll"></button></div>
+
+    <div class="blk"><div class="lbl" data-i18n="situation"></div><div class="opts" id="sit"></div></div>
+
+    <div class="blk"><div class="lbl" data-i18n="nationality"></div>
+      <div class="sel"><select id="nat"></select></div>
+      <div class="quick" id="natQuick"></div>
+    </div>
+
+    <div class="blk"><div class="lbl" data-i18n="sex"></div>
+      <div class="seg" id="sexo"><button data-v="M" data-i18n="male"></button><button data-v="F" data-i18n="female"></button><button data-v="" data-i18n="both"></button></div>
+    </div>
+
+    <div class="blk"><div class="lbl" data-i18n="foot"></div>
+      <div class="seg" id="pe"><button data-v="" data-i18n="any"></button><button data-v="L" data-i18n="left"></button><button data-v="R" data-i18n="right"></button><button data-v="B" data-i18n="both"></button></div>
+    </div>
+
+    <div class="blk"><div class="lbl"><span data-i18n="position"></span><button class="link" id="posClear" data-i18n="clear"></button></div>
+      <div class="pitch" id="pitch"></div>
+      <div class="seg" id="posMin" style="margin-top:8px"><button data-v="18" data-i18n="natural"></button><button data-v="15" data-i18n="accomplished"></button><button data-v="10" data-i18n="unconvincing"></button></div>
+    </div>
+
+    <div class="blk" id="rCA"></div>
+    <div class="blk" id="rPA"></div>
+    <div class="blk" id="rGAP"></div>
+    <div class="blk" id="rID"></div>
+
+    <div class="blk"><div class="row2"><span data-i18n="gameYear"></span><input class="mini" type="number" id="anoJogo"></div>
+      <div class="hint" id="yearHint"></div></div>
+  </aside>
+
+  <main>
+    <div class="kpis">
+      <div class="kpi"><div class="l"><i>#</i><span data-i18n="k_found"></span></div><div class="v" id="k1">—</div><div class="s" id="k1s">&nbsp;</div><svg class="spark" id="spark" viewBox="0 0 84 30" preserveAspectRatio="none"></svg></div>
+      <div class="kpi"><div class="l"><i>★</i><span data-i18n="k_ca"></span></div><div class="v" id="k2">—</div><div class="s" id="k2s">&nbsp;</div></div>
+      <div class="kpi"><div class="l"><i>↗</i><span data-i18n="k_pa"></span></div><div class="v" id="k3">—</div><div class="s" id="k3s">&nbsp;</div></div>
+      <div class="kpi"><div class="l"><i>◆</i><span data-i18n="k_gems"></span></div><div class="v" id="k4">—</div><div class="s" id="k4s">&nbsp;</div></div>
+    </div>
+    <div class="tbl" id="tblWrap">
+      <table><thead><tr>
+        <th class="nosort" style="width:28px"></th>
+        <th data-k="nome" data-i18n="th_player"></th><th data-k="pos0" data-i18n="th_pos"></th><th data-k="idade" class="r" data-i18n="th_age"></th>
+        <th data-k="ca" class="r" data-i18n="th_ca"></th><th data-k="pa" class="r" data-i18n="th_pa"></th><th data-k="gap" class="r" data-i18n="th_gap"></th>
+        <th data-k="nacao" data-i18n="th_nation"></th><th data-k="clube" data-i18n="th_contract"></th></tr></thead>
+        <tbody id="rows"></tbody></table>
+      <div class="empty" id="empty" style="display:none"></div>
+      <button class="btn loadmore" id="more" style="display:none" data-i18n="loadMore"></button>
+    </div>
+  </main>
+</div>
+
+<div class="shade" id="shade"></div>
+<aside class="drawer" id="drawer" aria-label="Player"></aside>
+<div class="toast" id="toast"></div>
+
+<script src="i18n.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
