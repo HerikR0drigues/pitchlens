@@ -32,11 +32,11 @@ TYPES = {'.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=u
          '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon',
          '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp'}
 _lock = threading.Lock()
-_state: dict = {'players': [], 'by_uid': {}, 'meta': None, 'erro': None, 'erro_code': None}
+_state: dict = {'players': [], 'by_uid': {}, 'meta': None, 'error': None, 'error_code': None}
 
-LIST_FIELDS = ('uid', 'nome', 'ca', 'pa', 'nacao', 'nacao_sigla', 'nasc_ano', 'clube', 'clube_uid',
-               'contrato_ano', 'livre', 'lista_transf', 'lista_emprest', 'feminino', 'pos', 'pe',
-               'pre_clube', 'pre_ano')
+LIST_FIELDS = ('uid', 'name', 'ca', 'pa', 'nation', 'nation_code', 'birth_year', 'club', 'club_uid',
+               'contract_year', 'free', 'transfer_listed', 'loan_listed', 'female', 'pos', 'foot',
+               'pre_club', 'pre_year')
 
 
 def refresh() -> None:
@@ -47,7 +47,7 @@ def refresh() -> None:
 def ensure_loaded() -> None:
     """First read of the save; concurrent callers wait for it instead of reading twice."""
     with _lock:
-        if not _state['meta'] and not _state['erro']:
+        if not _state['meta'] and not _state['error']:
             _read()
 
 
@@ -55,26 +55,26 @@ def _read() -> None:
     try:
         players, meta = fmreader.snapshot()
         _state.update(players=players, by_uid={p['uid']: p for p in players}, meta=meta,
-                      erro=None, erro_code=None)
+                      error=None, error_code=None)
     except fmreader.FMNotRunning as e:
-        _state.update(erro=str(e), erro_code=e.code)
+        _state.update(error=str(e), error_code=e.code)
     except Exception as e:  # noqa: BLE001
-        _state.update(erro=f'Error reading FM: {e}', erro_code='read_error')
+        _state.update(error=f'Error reading FM: {e}', error_code='read_error')
 
 
 def list_payload() -> dict:
     faces.wait(10)
-    rows = [[p[k] for k in LIST_FIELDS] + [faces.has(p['uid'])] for p in _state['players']]
-    return {'campos': LIST_FIELDS + ('foto',), 'linhas': rows, 'meta': _state['meta'], 'erro': _state['erro'],
-            'erro_code': _state['erro_code'], 'version': __version__}
+    data = [[p[k] for k in LIST_FIELDS] + [faces.has(p['uid'])] for p in _state['players']]
+    return {'fields': LIST_FIELDS + ('photo',), 'rows': data, 'meta': _state['meta'], 'error': _state['error'],
+            'error_code': _state['error_code'], 'version': __version__}
 
 
 def player_payload(uid: int) -> dict:
     p = _state['by_uid'].get(uid)
     if not p:
-        return {'erro': 'Player not found (refresh the data).', 'erro_code': 'player_not_found'}
-    return {**{k: p[k] for k in LIST_FIELDS}, 'contrato_dia': p['contrato_dia'], 'pre_dia': p['pre_dia'], 'nasc_dia': p['nasc_dia'],
-            'foto': faces.has(uid), 'attrs': p['attrs'], 'groups': fmreader.GROUP_INDEX}
+        return {'error': 'Player not found (refresh the data).', 'error_code': 'player_not_found'}
+    return {**{k: p[k] for k in LIST_FIELDS}, 'contract_day': p['contract_day'], 'pre_day': p['pre_day'], 'birth_day': p['birth_day'],
+            'photo': faces.has(uid), 'attrs': p['attrs'], 'groups': fmreader.GROUP_INDEX}
 
 
 class Handler(BaseHTTPRequestHandler):

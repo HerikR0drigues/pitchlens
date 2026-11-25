@@ -18,7 +18,7 @@ EDGE = next(p for p in (
     Path(os.environ.get('ProgramFiles', '')) / 'Microsoft/Edge/Application/msedge.exe') if p.is_file())
 
 SHOTS = [
-    ('overview-dark.png', 'lang=en&theme=dark&sit=todos'),
+    ('overview-dark.png', 'lang=en&theme=dark&sit=all'),
     ('overview-light.png', 'lang=pt&theme=light&sit=pre'),
     ('player-dark.png', f'lang=en&theme=dark&p={UID}'),
 ]

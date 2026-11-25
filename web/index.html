@@ -36,11 +36,11 @@
     </div>
 
     <div class="blk"><div class="lbl" data-i18n="sex"></div>
-      <div class="seg" id="sexo"><button data-v="M" data-i18n="male"></button><button data-v="F" data-i18n="female"></button><button data-v="" data-i18n="both"></button></div>
+      <div class="seg" id="sex"><button data-v="M" data-i18n="male"></button><button data-v="F" data-i18n="female"></button><button data-v="" data-i18n="both"></button></div>
     </div>
 
     <div class="blk"><div class="lbl" data-i18n="foot"></div>
-      <div class="seg" id="pe"><button data-v="" data-i18n="any"></button><button data-v="L" data-i18n="left"></button><button data-v="R" data-i18n="right"></button><button data-v="B" data-i18n="both"></button></div>
+      <div class="seg" id="foot"><button data-v="" data-i18n="any"></button><button data-v="L" data-i18n="left"></button><button data-v="R" data-i18n="right"></button><button data-v="B" data-i18n="both"></button></div>
     </div>
 
     <div class="blk"><div class="lbl"><span data-i18n="position"></span><button class="link" id="posClear" data-i18n="clear"></button></div>
@@ -51,9 +51,9 @@
     <div class="blk" id="rCA"></div>
     <div class="blk" id="rPA"></div>
     <div class="blk" id="rGAP"></div>
-    <div class="blk" id="rID"></div>
+    <div class="blk" id="rAGE"></div>
 
-    <div class="blk"><div class="row2"><span data-i18n="gameYear"></span><input class="mini" type="number" id="anoJogo"></div>
+    <div class="blk"><div class="row2"><span data-i18n="gameYear"></span><input class="mini" type="number" id="yearInput"></div>
       <div class="hint" id="yearHint"></div></div>
   </aside>
 
@@ -68,9 +68,9 @@
     <div class="tbl" id="tblWrap">
       <table><thead><tr>
         <th class="nosort" style="width:28px"></th>
-        <th data-k="nome" data-i18n="th_player"></th><th data-k="pos0" data-i18n="th_pos"></th><th data-k="idade" class="r" data-i18n="th_age"></th>
+        <th data-k="name" data-i18n="th_player"></th><th data-k="pos0" data-i18n="th_pos"></th><th data-k="age" class="r" data-i18n="th_age"></th>
         <th data-k="ca" class="r" data-i18n="th_ca"></th><th data-k="pa" class="r" data-i18n="th_pa"></th><th data-k="gap" class="r" data-i18n="th_gap"></th>
-        <th data-k="nacao" data-i18n="th_nation"></th><th data-k="clube" data-i18n="th_contract"></th></tr></thead>
+        <th data-k="nation" data-i18n="th_nation"></th><th data-k="club" data-i18n="th_contract"></th></tr></thead>
         <tbody id="rows"></tbody></table>
       <div class="empty" id="empty" style="display:none"></div>
       <button class="btn loadmore" id="more" style="display:none" data-i18n="loadMore"></button>

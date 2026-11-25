@@ -7,21 +7,21 @@ const URLP = new URLSearchParams(location.search);
 // grid on the mini pitch: [column 1..5, row 1..7], attack on top
 const GRID = {12:[3,1],9:[1,2],10:[3,2],11:[5,2],6:[1,3],7:[3,3],8:[5,3],13:[1,4],5:[3,4],14:[5,4],2:[1,5],3:[3,5],4:[5,5],1:[3,6],0:[3,7]};
 const PXY = {0:[50,92],1:[50,80],2:[14,70],3:[50,70],4:[86,70],13:[14,56],14:[86,56],5:[50,57],6:[14,41],7:[50,42],8:[86,41],9:[17,26],10:[50,26],11:[83,26],12:[50,10]};
-const SIT = [['livre','sit_free','#22c55e'],['fim','sit_end','#a78bfa'],['transf','sit_tl','#f59e0b'],['emprest','sit_ll','#38bdf8'],['pre','sit_pre','#f472b6'],['fav','sit_fav','#facc15'],['todos','sit_all','#64748b']];
-const RANGES = [['rCA','ca','ca',0,200],['rPA','pa','pa',0,200],['rGAP','gap','gap',0,120],['rID','id','age',14,45]];
+const SIT = [['free','sit_free','#22c55e'],['ending','sit_end','#a78bfa'],['transfer','sit_tl','#f59e0b'],['loan','sit_ll','#38bdf8'],['pre','sit_pre','#f472b6'],['fav','sit_fav','#facc15'],['all','sit_all','#64748b']];
+const RANGES = [['rCA','ca','ca',0,200],['rPA','pa','pa',0,200],['rGAP','gap','gap',0,120],['rAGE','age','age',14,45]];
 const RADAR = {
   field: [['ax_finishing',[2,4,6]],['ax_technique',[23,1,22]],['ax_creativity',[7,10,26,18]],['ax_defending',[9,5,20,17]],
           ['ax_speed',[38,34,46]],['ax_physical',[36,37,50,39]],['ax_mental',[51,29,28,52]]],
   gk:    [['ax_reflexes',[21,19]],['ax_handling',[11,33]],['ax_aerial',[12,13,39]],['ax_distribution',[15,16,7]],
           ['ax_mental',[53,18,52,20]],['ax_physical',[46,36,50]]],
 };
-const DEF = {q:'',sit:'livre',nat:'',sexo:'M',pe:'',pos:[],posMin:15,ca:[0,200],pa:[0,200],gap:[0,120],id:[15,40],
+const DEF = {q:'',sit:'free',nat:'',sex:'M',foot:'',pos:[],posMin:15,ca:[0,200],pa:[0,200],gap:[0,120],age:[15,40],
              year:null,sort:'ca',dir:-1,theme:null,lang:null};
 
-let F = Object.assign({}, DEF, store('f') || {});
+let F = Object.assign({}, DEF, store('filters') || {});
 if (!Array.isArray(F.pos) || F.pos.some(p => typeof p !== 'number')) F.pos = [];
 if (![18,15,10].includes(+F.posMin)) F.posMin = 15;
-if (!['','L','R','B'].includes(F.pe)) F.pe = '';
+if (!['','L','R','B'].includes(F.foot)) F.foot = '';
 let FAV = new Set(store('fav') || []);
 let ALL = [], VIEW = [], BASE = [], META = null, shown = 0, lastErr = null;
 const PAGE = 200;
@@ -35,28 +35,28 @@ const t = (k, vars) => { let s = (I18N[LANG()] || I18N.en)[k] ?? I18N.en[k] ?? k
 const fmt = n => Number(n).toLocaleString(LANG() === 'pt' ? 'pt-BR' : 'en-US');
 const posName = i => POS_NAMES[LANG()][i];
 const attrName = i => ATTR_NAMES[LANG()][i];
-const gameYear = () => +F.year || META?.ano_jogo || new Date().getFullYear();
+const gameYear = () => +F.year || META?.game_year || new Date().getFullYear();
 function tone(v, max = 200) { const r = v / max; return r >= .75 ? '#22c55e' : r >= .6 ? '#84cc16' : r >= .5 ? '#eab308' : r >= .4 ? '#f97316' : '#ef4444'; }
 const tone20 = v => tone(v, 20);
 const rating = v => { const c = tone(v); return `<span class="rating" style="background:${c}1f;color:${c}">${v}</span>`; };
 function initials(n) { const w = String(n).split(/\s+/).filter(Boolean); return ((w[0] || '?')[0] + (w.length > 1 ? w[w.length - 1][0] : '')).toUpperCase(); }
 function avatar(p) {
-  const h = (p.uid * 47) % 360, img = p.foto ? `<img src="/api/face?uid=${p.uid}" alt="" loading="lazy" decoding="async" onload="faceOk(this)" onerror="faceFail(this)">` : '';
-  return `<div class="av" style="--h1:hsl(${h} 58% 46%);--h2:hsl(${(h + 40) % 360} 62% 36%)"><span>${esc(initials(p.nome))}</span>${img}</div>`;
+  const h = (p.uid * 47) % 360, img = p.photo ? `<img src="/api/face?uid=${p.uid}" alt="" loading="lazy" decoding="async" onload="faceOk(this)" onerror="faceFail(this)">` : '';
+  return `<div class="av" style="--h1:hsl(${h} 58% 46%);--h2:hsl(${(h + 40) % 360} 62% 36%)"><span>${esc(initials(p.name))}</span>${img}</div>`;
 }
 function faceOk(img) { img.parentNode.classList.add('ph'); }
 function faceFail(img) { img.style.display = 'none'; }
 const natural = p => p.pos.map((v, i) => [v, i]).filter(x => x[0] >= 15).sort((a, b) => b[0] - a[0]);
 const FOOT_LBL = {L: ['L', 'E'], R: ['R', 'D'], B: ['B', 'A']};
-function footTag(p) { const f = FOOT_LBL[p.pe]; if (!f) return ''; const title = {L: t('left'), R: t('right'), B: t('both')}[p.pe]; return `<span class="pt foot" title="${esc(title)}">${LANG() === 'pt' ? f[1] : f[0]}</span>`; }
-function preDate(p) { if (!p.pre_ano) return ''; if (!p.pre_dia) return String(p.pre_ano); const d = new Date(p.pre_ano, 0, p.pre_dia); return d.toLocaleDateString(LANG() === 'pt' ? 'pt-BR' : 'en-GB'); }
-function preTag(p) { return p.pre_clube ? `<span class="tag pre" title="${esc(t('preTitle', {c: p.pre_clube, d: preDate(p)}))}">→ ${esc(p.pre_clube)}</span>` : ''; }
-function listTags(p) { return preTag(p) + (p.lista_transf ? `<span class="tag tl">${LANG() === 'pt' ? 'Transf.' : 'TL'}</span>` : '') + (p.lista_emprest ? `<span class="tag ll">${LANG() === 'pt' ? 'Empr.' : 'LL'}</span>` : ''); }
+function footTag(p) { const f = FOOT_LBL[p.foot]; if (!f) return ''; const title = {L: t('left'), R: t('right'), B: t('both')}[p.foot]; return `<span class="pt foot" title="${esc(title)}">${LANG() === 'pt' ? f[1] : f[0]}</span>`; }
+function preDate(p) { if (!p.pre_year) return ''; if (!p.pre_day) return String(p.pre_year); const d = new Date(p.pre_year, 0, p.pre_day); return d.toLocaleDateString(LANG() === 'pt' ? 'pt-BR' : 'en-GB'); }
+function preTag(p) { return p.pre_club ? `<span class="tag pre" title="${esc(t('preTitle', {c: p.pre_club, d: preDate(p)}))}">→ ${esc(p.pre_club)}</span>` : ''; }
+function listTags(p) { return preTag(p) + (p.transfer_listed ? `<span class="tag tl">${LANG() === 'pt' ? 'Transf.' : 'TL'}</span>` : '') + (p.loan_listed ? `<span class="tag ll">${LANG() === 'pt' ? 'Empr.' : 'LL'}</span>` : ''); }
 const STAR = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="m12 2.8 2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2l-5.7 3.1 1.2-6.4-4.7-4.4 6.4-.8z"/></svg>';
 function toast(msg) { const el = $('#toast'); el.textContent = msg; el.classList.add('on'); clearTimeout(toast.tm); toast.tm = setTimeout(() => el.classList.remove('on'), 1600); }
 function gameDateText() {
-  if (!META?.ano_jogo) return '';
-  const d = new Date(META.ano_jogo, 0, META.dia_jogo || 1);
+  if (!META?.game_year) return '';
+  const d = new Date(META.game_year, 0, META.game_day || 1);
   return `${d.getDate()} ${MONTHS[LANG()][d.getMonth()]} ${d.getFullYear()}`;
 }
 
@@ -101,7 +101,7 @@ function dual(el, key, label, min, max) {
 function drawHist(el) {
   const svg = el.querySelector('.hist'); if (!svg) return;
   const {_key: k, _min: mn, _max: mx} = el, n = Math.min(40, mx - mn), bins = new Array(n).fill(0);
-  for (const p of BASE) { const v = p[k === 'id' ? 'idade' : k]; if (v < mn || v > mx) continue; bins[Math.min(n - 1, Math.floor((v - mn) / (mx - mn) * n))]++; }
+  for (const p of BASE) { const v = p[k]; if (v < mn || v > mx) continue; bins[Math.min(n - 1, Math.floor((v - mn) / (mx - mn) * n))]++; }
   const top = Math.max(1, ...bins), w = 100 / n, [a, b] = F[k];
   svg.innerHTML = bins.map((c, i) => {
     const lo = mn + i * (mx - mn) / n, hi = mn + (i + 1) * (mx - mn) / n, inr = hi > a && lo <= b, h = c ? Math.max(1.5, c / top * 24) : 0;
@@ -117,26 +117,26 @@ function buildPitch() {
 // ---------- filtering
 function apply() {
   const q = norm(F.q), ano = gameYear(), pm = +F.posMin;
-  const cnt = {livre:0, fim:0, transf:0, emprest:0, pre:0, fav:0, todos:0};
+  const cnt = {free:0, ending:0, transfer:0, loan:0, pre:0, fav:0, all:0};
   VIEW = []; BASE = [];
-  const sitOk = p => F.sit === 'todos' || (F.sit === 'livre' && p.livre) || (F.sit === 'fim' && !p.livre && p.contrato_ano === ano)
-    || (F.sit === 'transf' && p.lista_transf) || (F.sit === 'emprest' && p.lista_emprest) || (F.sit === 'pre' && p.pre_clube) || (F.sit === 'fav' && FAV.has(p.uid));
+  const sitOk = p => F.sit === 'all' || (F.sit === 'free' && p.free) || (F.sit === 'ending' && !p.free && p.contract_year === ano)
+    || (F.sit === 'transfer' && p.transfer_listed) || (F.sit === 'loan' && p.loan_listed) || (F.sit === 'pre' && p.pre_club) || (F.sit === 'fav' && FAV.has(p.uid));
   for (const p of ALL) {
     if (q) {                                   // global search: ignores every other filter
-      if (!p._n.includes(q) && !p._c.includes(q) && !norm(p.pre_clube || '').includes(q)) continue;
-      p.gap = p.pa - p.ca; p.idade = p.nasc_ano ? ano - p.nasc_ano : 0;
-      cnt.todos++; BASE.push(p); VIEW.push(p); continue;
+      if (!p._n.includes(q) && !p._c.includes(q) && !norm(p.pre_club || '').includes(q)) continue;
+      p.gap = p.pa - p.ca; p.age = p.birth_year ? ano - p.birth_year : 0;
+      cnt.all++; BASE.push(p); VIEW.push(p); continue;
     }
-    if (F.nat && p.nacao !== F.nat) continue;
-    if ((F.sexo === 'M' && p.feminino) || (F.sexo === 'F' && !p.feminino)) continue;
-    if (F.pe && p.pe !== F.pe && !(p.pe === 'B' && F.pe !== 'B')) continue;
+    if (F.nat && p.nation !== F.nat) continue;
+    if ((F.sex === 'M' && p.female) || (F.sex === 'F' && !p.female)) continue;
+    if (F.foot && p.foot !== F.foot && !(p.foot === 'B' && F.foot !== 'B')) continue;
     if (F.pos.length && !F.pos.some(i => p.pos[i] >= pm)) continue;
-    p.gap = p.pa - p.ca; p.idade = p.nasc_ano ? ano - p.nasc_ano : 0;
+    p.gap = p.pa - p.ca; p.age = p.birth_year ? ano - p.birth_year : 0;
     const inR = p.ca >= F.ca[0] && p.ca <= F.ca[1] && p.pa >= F.pa[0] && p.pa <= F.pa[1] && p.gap >= F.gap[0]
-      && (p.gap <= F.gap[1] || F.gap[1] === 120) && p.idade >= F.id[0] && p.idade <= F.id[1];
+      && (p.gap <= F.gap[1] || F.gap[1] === 120) && p.age >= F.age[0] && p.age <= F.age[1];
     if (inR) {
-      cnt.todos++; if (p.livre) cnt.livre++; else if (p.contrato_ano === ano) cnt.fim++;
-      if (p.lista_transf) cnt.transf++; if (p.lista_emprest) cnt.emprest++; if (p.pre_clube) cnt.pre++; if (FAV.has(p.uid)) cnt.fav++;
+      cnt.all++; if (p.free) cnt.free++; else if (p.contract_year === ano) cnt.ending++;
+      if (p.transfer_listed) cnt.transfer++; if (p.loan_listed) cnt.loan++; if (p.pre_club) cnt.pre++; if (FAV.has(p.uid)) cnt.fav++;
     }
     if (!sitOk(p)) continue;
     BASE.push(p); if (inR) VIEW.push(p);
@@ -144,7 +144,7 @@ function apply() {
   $$('#sit .opt').forEach(b => { b.querySelector('.n').textContent = ALL.length && !q ? fmt(cnt[b.dataset.v]) : '—'; });
   document.body.classList.toggle('searching', !!q);
   $('#gsearch').textContent = q ? t('searchGlobal', {n: fmt(VIEW.length)}) : '';
-  const fimLbl = $('#sit .opt[data-v="fim"] .t'); if (fimLbl) fimLbl.textContent = t('sit_end', {y: ano});
+  const endLbl = $('#sit .opt[data-v="ending"] .t'); if (endLbl) endLbl.textContent = t('sit_end', {y: ano});
   const k = F.sort, d = F.dir;
   VIEW.sort((a, b) => {
     let x = a[k], y = b[k];
@@ -152,10 +152,10 @@ function apply() {
     return (typeof x === 'string' ? x.localeCompare(y) : x - y) * d || b.ca - a.ca;
   });
   RANGES.forEach(([id]) => drawHist($('#' + id)));
-  shown = PAGE; render(); kpis(); countFilters(); store('f', F);
+  shown = PAGE; render(); kpis(); countFilters(); store('filters', F);
 }
 function countFilters() {
-  let n = 0; if (F.sit !== 'todos') n++; if (F.nat) n++; if (F.sexo) n++; if (F.pe) n++; if (F.pos.length) n++; if (F.q) n++;
+  let n = 0; if (F.sit !== 'all') n++; if (F.nat) n++; if (F.sex) n++; if (F.foot) n++; if (F.pos.length) n++; if (F.q) n++;
   RANGES.forEach(([, k, , mn, mx]) => { if (F[k][0] !== mn || F[k][1] !== mx) n++; });
   $('#fcount').textContent = n;
 }
@@ -163,10 +163,10 @@ function kpis() {
   const v = VIEW;
   $('#k1').textContent = fmt(v.length); $('#k1s').textContent = t('k_of', {n: fmt(ALL.length)});
   const top = v.reduce((a, b) => !a || b.ca > a.ca ? b : a, null), pot = v.reduce((a, b) => !a || b.pa > a.pa ? b : a, null);
-  const gems = v.filter(p => p.idade <= 21 && p.pa >= 140);
-  $('#k2').textContent = top ? top.ca : '—'; $('#k2s').textContent = top ? top.nome : '';
-  $('#k3').textContent = pot ? pot.pa : '—'; $('#k3s').textContent = pot ? pot.nome : '';
-  $('#k4').textContent = fmt(gems.length); $('#k4s').textContent = gems.slice(0, 3).map(p => p.nome).join(', ') || '—';
+  const gems = v.filter(p => p.age <= 21 && p.pa >= 140);
+  $('#k2').textContent = top ? top.ca : '—'; $('#k2s').textContent = top ? top.name : '';
+  $('#k3').textContent = pot ? pot.pa : '—'; $('#k3s').textContent = pot ? pot.name : '';
+  $('#k4').textContent = fmt(gems.length); $('#k4s').textContent = gems.slice(0, 3).map(p => p.name).join(', ') || '—';
   const n = 24, b = new Array(n).fill(0); v.forEach(p => b[Math.min(n - 1, Math.floor(p.ca / 200 * n))]++); const m = Math.max(1, ...b);
   const pts = b.map((c, i) => `${(i / (n - 1) * 84).toFixed(1)},${(28 - c / m * 26).toFixed(1)}`).join(' ');
   $('#spark').innerHTML = `<defs><linearGradient id="sg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="var(--accent)" stop-opacity=".35"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs><polygon points="0,30 ${pts} 84,30" fill="url(#sg)"/><polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="1.5" vector-effect="non-scaling-stroke"/>`;
@@ -176,12 +176,12 @@ function render() {
   $('#rows').innerHTML = VIEW.slice(0, shown).map(p => {
     const nat = natural(p).slice(0, 3);
     return `<tr data-uid="${p.uid}"><td><button class="star ${FAV.has(p.uid) ? 'on' : ''}" data-fav="${p.uid}" title="${esc(t(FAV.has(p.uid) ? 'removeFav' : 'addFav'))}">${STAR}</button></td>
-    <td><div class="pl">${avatar(p)}<div><div class="nm">${esc(p.nome)}</div><div class="sub">${p.feminino ? esc(t('female_tag')) + ' · ' : ''}${esc(p.nacao_sigla || '')}${p.nacao_sigla ? ' · ' : ''}ID ${p.uid}</div></div></div></td>
+    <td><div class="pl">${avatar(p)}<div><div class="nm">${esc(p.name)}</div><div class="sub">${p.female ? esc(t('female_tag')) + ' · ' : ''}${esc(p.nation_code || '')}${p.nation_code ? ' · ' : ''}ID ${p.uid}</div></div></div></td>
     <td><div class="poss">${footTag(p)}${nat.map(([v, i]) => `<span class="pt ${v >= 18 ? 'n' : ''}">${posName(i)}</span>`).join('') || '<span class="sub">—</span>'}</div></td>
-    <td class="r">${p.idade || '—'}</td><td class="r">${rating(p.ca)}</td><td class="r">${rating(p.pa)}</td>
+    <td class="r">${p.age || '—'}</td><td class="r">${rating(p.ca)}</td><td class="r">${rating(p.pa)}</td>
     <td class="r gap" style="color:${p.gap >= 25 ? '#22c55e' : p.gap >= 10 ? 'var(--text)' : 'var(--faint)'}">${p.gap > 0 ? '+' : ''}${p.gap}</td>
-    <td>${esc(p.nacao)}<span class="flag">${esc(p.nacao_sigla)}</span></td>
-    <td><div class="ct">${p.livre ? `<span class="tag free">${esc(t('free'))}</span>` : `<span class="cn">${esc(p.clube || '—')}</span><span class="cy">${p.contrato_ano}</span>`}${listTags(p)}</div></td></tr>`;
+    <td>${esc(p.nation)}<span class="flag">${esc(p.nation_code)}</span></td>
+    <td><div class="ct">${p.free ? `<span class="tag free">${esc(t('free'))}</span>` : `<span class="cn">${esc(p.club || '—')}</span><span class="cy">${p.contract_year}</span>`}${listTags(p)}</div></td></tr>`;
   }).join('');
   const empty = $('#empty');
   if (!ALL.length && lastErr) { empty.style.display = 'block'; empty.innerHTML = onboarding(); }
@@ -202,15 +202,15 @@ function toggleFav(uid) {
 async function openPlayer(uid) {
   $$('tr.sel').forEach(r => r.classList.remove('sel')); $(`tr[data-uid="${uid}"]`)?.classList.add('sel');
   let p; try { p = await (await fetch('/api/player?uid=' + uid)).json(); } catch { return toast(t('err_offline')); }
-  if (p.erro) return toast(t('err_' + p.erro_code) || p.erro);
-  const idade = p.nasc_ano ? gameYear() - p.nasc_ano : '—', nat = natural(p), isGK = p.pos[0] >= 15, A = p.attrs;
+  if (p.error) return toast(t('err_' + p.error_code) || p.error);
+  const age = p.birth_year ? gameYear() - p.birth_year : '—', nat = natural(p), isGK = p.pos[0] >= 15, A = p.attrs;
   const avg = a => Math.round(a.reduce((s, i) => s + A[i], 0) / a.length * 10) / 10;
   const ax = (isGK ? RADAR.gk : RADAR.field).map(([k, idx]) => [t(k), avg(idx)]);
   const foot = v => t(v >= 18 ? 'f_vstrong' : v >= 14 ? 'f_strong' : v >= 10 ? 'f_ok' : v >= 6 ? 'f_weak' : 'f_vweak');
   const col = g => `<div><h6>${esc(t('g_' + g))}</h6>${p.groups[g].map(i => [attrName(i), A[i]]).sort((a, b) => a[0].localeCompare(b[0]))
     .map(([k, v]) => `<div class="ar"><span>${esc(k)}</span><b style="color:${tone20(v)};background:${tone20(v)}1a">${v}</b></div>`).join('')}</div>`;
   $('#drawer').innerHTML = `
-   <div class="dh">${avatar(p)}<div><h2>${esc(p.nome)}</h2><div class="meta">${idade} ${esc(t('years'))} · ${esc(p.nacao)} · ${nat.map(x => posName(x[1])).join(' / ') || '—'}</div></div>
+   <div class="dh">${avatar(p)}<div><h2>${esc(p.name)}</h2><div class="meta">${age} ${esc(t('years'))} · ${esc(p.nation)} · ${nat.map(x => posName(x[1])).join(' / ') || '—'}</div></div>
      <div class="acts"><button class="btn icon star ${FAV.has(p.uid) ? 'on' : ''}" id="dfav" data-uid="${p.uid}" title="${esc(t('addFav'))}">${STAR}</button>
      <button class="btn icon" id="dlink" title="${esc(t('copyLink'))}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg></button>
      <button class="btn icon" id="dclose" title="${esc(t('close'))}">✕</button></div></div>
@@ -219,7 +219,7 @@ async function openPlayer(uid) {
       <div><div class="k">CA</div><div class="v" style="color:${tone(p.ca)}">${p.ca}</div><div class="meter"><i style="width:${p.ca / 2}%;background:${tone(p.ca)}"></i></div></div>
       <div><div class="k">PA</div><div class="v" style="color:${tone(p.pa)}">${p.pa}</div><div class="meter"><i style="width:${p.pa / 2}%;background:${tone(p.pa)}"></i></div></div>
       <div><div class="k">${esc(t('margin'))}</div><div class="v">${p.pa - p.ca > 0 ? '+' : ''}${p.pa - p.ca}</div></div>
-      <div><div class="k">${esc(t('contract'))}</div><div class="v" style="font-size:13px">${p.livre ? `<span class="tag free">${esc(t('free'))}</span>` : esc(p.clube) + `<div class="sub">${esc(t('until'))} ${p.contrato_ano}</div>`}${listTags(p)}${p.pre_clube ? `<div class="sub">${esc(t('preTitle', {c: p.pre_clube, d: preDate(p)}))}</div>` : ''}</div></div>
+      <div><div class="k">${esc(t('contract'))}</div><div class="v" style="font-size:13px">${p.free ? `<span class="tag free">${esc(t('free'))}</span>` : esc(p.club) + `<div class="sub">${esc(t('until'))} ${p.contract_year}</div>`}${listTags(p)}${p.pre_club ? `<div class="sub">${esc(t('preTitle', {c: p.pre_club, d: preDate(p)}))}</div>` : ''}</div></div>
     </div></div>
     <div class="grid2">
       <div class="card"><h4>${esc(t('profile'))}</h4>${radar(ax)}</div>
@@ -262,11 +262,11 @@ async function load(path, tries = 0) {
   try {
     const r = await (await fetch(path)).json();
     $('#ver').textContent = r.version ? 'v' + r.version : '';
-    lastErr = r.erro ? (t('err_' + r.erro_code) !== 'err_' + r.erro_code ? t('err_' + r.erro_code) : r.erro) : null;
+    lastErr = r.error ? (t('err_' + r.error_code) !== 'err_' + r.error_code ? t('err_' + r.error_code) : r.error) : null;
     if (r.meta) {
       META = r.meta;
-      const c = r.campos;
-      ALL = r.linhas.map(row => { const o = {}; c.forEach((k, i) => o[k] = row[i]); o._n = norm(o.nome); o._c = norm(o.clube); return o; });
+      const c = r.fields;
+      ALL = r.rows.map(row => { const o = {}; c.forEach((k, i) => o[k] = row[i]); o._n = norm(o.name); o._c = norm(o.club); return o; });
       fillNations();
     }
     setStatus();
@@ -281,13 +281,13 @@ async function load(path, tries = 0) {
 function setStatus() {
   const st = $('#status');
   if (lastErr && !ALL.length) { st.className = 'status err'; $('#statusTxt').textContent = lastErr; }
-  else if (META) { st.className = lastErr ? 'status err' : 'status'; $('#statusTxt').textContent = `${fmt(META.total)} ${t('players')}` + (META.ano_jogo ? ` · ${gameDateText()} ${t('gameDate')}` : '') + ` · ${META.lido_em}`; }
+  else if (META) { st.className = lastErr ? 'status err' : 'status'; $('#statusTxt').textContent = `${fmt(META.total)} ${t('players')}` + (META.game_year ? ` · ${gameDateText()} ${t('gameDate')}` : '') + ` · ${META.read_at}`; }
   else { st.className = 'status wait'; $('#statusTxt').textContent = t('connecting'); }
-  $('#anoJogo').value = gameYear();
-  $('#yearHint').textContent = !F.year && META?.ano_jogo ? `${gameDateText()} · ${t('detected')}` : '';
+  $('#yearInput').value = gameYear();
+  $('#yearHint').textContent = !F.year && META?.game_year ? `${gameDateText()} · ${t('detected')}` : '';
 }
 function fillNations() {
-  const c = {}; ALL.forEach(p => { if (p.nacao) c[p.nacao] = (c[p.nacao] || 0) + 1; });
+  const c = {}; ALL.forEach(p => { if (p.nation) c[p.nation] = (c[p.nation] || 0) + 1; });
   if (F.nat && !c[F.nat]) F.nat = '';
   $('#nat').innerHTML = `<option value="">${esc(t('allNations'))}</option>` + Object.keys(c).sort((a, b) => a.localeCompare(b)).map(n => `<option value="${esc(n)}">${esc(n)} · ${fmt(c[n])}</option>`).join('');
   const top = Object.entries(c).sort((a, b) => b[1] - a[1]).slice(0, 4).map(x => x[0]);
@@ -302,20 +302,20 @@ let tmr; const debounced = () => { clearTimeout(tmr); tmr = setTimeout(apply, 90
 function sync() {
   $('#q').value = F.q; if ($('#nat').options.length > 1) $('#nat').value = F.nat;
   $$('#sit .opt').forEach(b => b.classList.toggle('on', b.dataset.v === F.sit));
-  $$('#sexo button').forEach(b => b.classList.toggle('on', b.dataset.v === F.sexo));
-  $$('#pe button').forEach(b => b.classList.toggle('on', b.dataset.v === (F.pe || '')));
+  $$('#sex button').forEach(b => b.classList.toggle('on', b.dataset.v === F.sex));
+  $$('#foot button').forEach(b => b.classList.toggle('on', b.dataset.v === (F.foot || '')));
   $$('#posMin button').forEach(b => b.classList.toggle('on', +b.dataset.v === +F.posMin));
   $$('#natQuick button').forEach(b => b.classList.toggle('on', b.dataset.v === F.nat));
   $$('#pitch .pc').forEach(b => b.classList.toggle('on', F.pos.includes(+b.dataset.p)));
   RANGES.forEach(([id]) => $('#' + id)._paint && $('#' + id)._paint());
 }
 $('#q').oninput = e => { F.q = e.target.value; debounced(); };
-$('#anoJogo').oninput = e => { F.year = +e.target.value || null; $('#yearHint').textContent = ''; debounced(); };
+$('#yearInput').oninput = e => { F.year = +e.target.value || null; $('#yearHint').textContent = ''; debounced(); };
 $('#nat').onchange = e => { F.nat = e.target.value; sync(); apply(); };
-$$('#sexo button').forEach(b => b.onclick = () => { F.sexo = b.dataset.v; sync(); apply(); });
-$$('#pe button').forEach(b => b.onclick = () => { F.pe = b.dataset.v; sync(); apply(); });
+$$('#sex button').forEach(b => b.onclick = () => { F.sex = b.dataset.v; sync(); apply(); });
+$$('#foot button').forEach(b => b.onclick = () => { F.foot = b.dataset.v; sync(); apply(); });
 $$('#posMin button').forEach(b => b.onclick = () => { F.posMin = +b.dataset.v; sync(); apply(); });
-$$('th[data-k]').forEach(th => th.onclick = () => { const k = th.dataset.k; F.dir = F.sort === k ? -F.dir : (['nome', 'nacao', 'clube', 'pos0'].includes(k) ? 1 : -1); F.sort = k; apply(); });
+$$('th[data-k]').forEach(th => th.onclick = () => { const k = th.dataset.k; F.dir = F.sort === k ? -F.dir : (['name', 'nation', 'club', 'pos0'].includes(k) ? 1 : -1); F.sort = k; apply(); });
 $('#rows').onclick = e => {
   const s = e.target.closest('[data-fav]'); if (s) { e.stopPropagation(); return toggleFav(+s.dataset.fav); }
   const tr = e.target.closest('tr'); if (tr) openPlayer(+tr.dataset.uid);
@@ -325,11 +325,11 @@ $('#tblWrap').onscroll = e => { const el = e.target; if (el.scrollTop + el.clien
 $('#refresh').onclick = () => load('/api/refresh');
 $('#reset').onclick = () => { F = Object.assign({}, DEF, {theme: F.theme, lang: F.lang, pos: []}); sync(); setStatus(); apply(); };
 $('#posClear').onclick = () => { F.pos = []; sync(); apply(); };
-$('#theme').onclick = () => { F.theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'; applyTheme(); RANGES.forEach(([id]) => drawHist($('#' + id))); store('f', F); };
+$('#theme').onclick = () => { F.theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'; applyTheme(); RANGES.forEach(([id]) => drawHist($('#' + id))); store('filters', F); };
 $('#lang').onclick = () => { F.lang = LANG() === 'pt' ? 'en' : 'pt'; applyLang(); if (ALL.length) fillNations(); sync(); setStatus(); apply(); };
 $('#shade').onclick = closeDrawer;
 $('#csv').onclick = () => {
-  const cols = ['nome', 'idade', 'ca', 'pa', 'gap', 'nacao', 'clube', 'contrato_ano', 'livre', 'lista_transf', 'lista_emprest', 'pre_clube', 'pe', 'uid'];
+  const cols = ['name', 'age', 'ca', 'pa', 'gap', 'nation', 'club', 'contract_year', 'free', 'transfer_listed', 'loan_listed', 'pre_club', 'foot', 'uid'];
   const lines = [cols.join(';'), ...VIEW.map(p => cols.map(c => `"${String(p[c] ?? '').replace(/"/g, '""')}"`).join(';'))];
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + lines.join('\n')], {type: 'text/csv;charset=utf-8'})); a.download = 'pitchlens.csv'; a.click();
 };

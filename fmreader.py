@@ -121,27 +121,27 @@ class FMNotRunning(Exception):
 @dataclass
 class Player:
     uid: int
-    nome: str
+    name: str
     ca: int
     pa: int
-    nacao: str
-    nacao_sigla: str
-    nasc_ano: int
-    nasc_dia: int
-    clube: str
-    clube_uid: int
-    contrato_ano: int
-    contrato_dia: int
-    livre: bool
-    lista_transf: bool
-    lista_emprest: bool
-    feminino: bool
+    nation: str
+    nation_code: str
+    birth_year: int
+    birth_day: int
+    club: str
+    club_uid: int
+    contract_year: int
+    contract_day: int
+    free: bool
+    transfer_listed: bool
+    loan_listed: bool
+    female: bool
     pos: list          # 15 values 1..20 (order in POSITIONS)
     attrs: list        # 54 values 1..20 (order in ATTRIBUTES)
-    pe: str            # 'L' / 'R' / 'B'
-    pre_clube: str = ''   # pre-contract already signed with another club ('' = none)
-    pre_ano: int = 0      # pre-contract start
-    pre_dia: int = 0
+    foot: str            # 'L' / 'R' / 'B'
+    pre_club: str = ''   # pre-contract already signed with another club ('' = none)
+    pre_year: int = 0      # pre-contract start
+    pre_day: int = 0
 
 
 class FMReader:
@@ -346,15 +346,15 @@ class FMReader:
             by_addr[a] = (out[-1], con, club_ptr)
         game = _game_date(starts)
         self._pre_contracts(contracts, by_addr, game)
-        meta = dict(total=len(out), segundos=round(time.time() - t0, 1),
-                    vtable_rva=hex(vt - self.module_base), lido_em=time.strftime('%H:%M:%S'),
-                    pre_contratos=sum(1 for p in out if p.pre_clube), **game)
+        meta = dict(total=len(out), seconds=round(time.time() - t0, 1),
+                    vtable_rva=hex(vt - self.module_base), read_at=time.strftime('%H:%M:%S'),
+                    pre_contracts=sum(1 for p in out if p.pre_club), **game)
         return out, meta
 
     def _pre_contracts(self, contracts: list[int], by_addr: dict, game: dict) -> None:
         """A player can have a second contract object that starts in the future. When its club is not
         the current one, it is a pre-contract (Bosman) already signed - the player is not really available."""
-        today = (game['ano_jogo'], game['dia_jogo']) if game['ano_jogo'] else None
+        today = (game['game_year'], game['game_day']) if game['game_year'] else None
         for c in contracts:
             d = self.read(c, 0x4C)
             if len(d) < 0x4C:
@@ -369,9 +369,9 @@ class FMReader:
             start = (syear, sday & 0x1FF)
             if club == cur_club or not 2000 <= eyear < 2200 or (today and start <= today):
                 continue
-            if not player.pre_clube or start < (player.pre_ano, player.pre_dia):
-                player.pre_clube = self.club(club)[1]
-                player.pre_ano, player.pre_dia = start
+            if not player.pre_club or start < (player.pre_year, player.pre_day):
+                player.pre_club = self.club(club)[1]
+                player.pre_year, player.pre_day = start
 
 
 def _game_date(starts: collections.Counter) -> dict:
@@ -379,9 +379,9 @@ def _game_date(starts: collections.Counter) -> dict:
     current in-game day. The latest start date shared by 3+ contracts is a good estimate."""
     common = [k for k, n in starts.items() if n >= 3]
     if not common:
-        return {'ano_jogo': None, 'dia_jogo': None}
+        return {'game_year': None, 'game_day': None}
     year, day = max(common)
-    return {'ano_jogo': year, 'dia_jogo': day}
+    return {'game_year': year, 'game_day': day}
 
 
 def snapshot() -> tuple[list[dict], dict]:
@@ -398,6 +398,6 @@ if __name__ == '__main__':
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
     ps, meta = snapshot()
     print(meta)
-    free = [p for p in ps if p['livre'] and not p['feminino']]
+    free = [p for p in ps if p['free'] and not p['female']]
     for p in sorted(free, key=lambda p: -p['ca'])[:10]:
-        print(p['nome'], p['ca'], p['pa'], p['nasc_ano'], p['nacao'])
+        print(p['name'], p['ca'], p['pa'], p['birth_year'], p['nation'])

@@ -12,7 +12,7 @@ esse arquivo atualizado quando mapear algo novo.
 - `faces.py` — fotos do facepack do usuário (pasta Documentos via Windows, índice uid → arquivo). Fotos nativas do FM27 ficam em bundles do Unity e não são lidas.
 - `scout.py` — servidor `http.server` em `127.0.0.1:8770` (cai para a próxima porta livre; se já houver um scout
   rodando, só abre o navegador). Rotas: `/`, `/api/ping`, `/api/players`, `/api/refresh`, `/api/player?uid=`, `/api/face?uid=`,
-  arquivos estáticos de `web/`. Erros vêm com `erro_code` (`not_running`, `no_save`, `access`, `read_error`).
+  arquivos estáticos de `web/`. Erros vêm com `error_code` (`not_running`, `no_save`, `access`, `read_error`).
 - `web/` — `index.html`, `style.css`, `app.js`, `i18n.js` (textos EN/PT, nomes de atributos e posições).
   Sem build, sem CDN. Parâmetros de URL: `?lang=en|pt&theme=dark|light&sit=<situacao>&q=<busca>&p=<uid>`.
 - `tools/` — `memscan.py`, `find_attrs.py`, `modules.py` (pesquisa) e `screenshots.py` (prints do README via Edge headless).
