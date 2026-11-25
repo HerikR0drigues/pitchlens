@@ -1,5 +1,5 @@
-"""Procura blocos de atributos (bytes 1..20 ou 1..100) perto da ficha de um jogador.
-Uso: py -I tools/find_attrs.py "Nome comum" ANO_NASC
+"""Look for attribute blocks (runs of bytes 1..20) around a player object.
+Usage: py -I tools/find_attrs.py "Common name" BIRTH_YEAR
 """
 import sys, struct
 sys.path.insert(0, '.')
@@ -8,7 +8,7 @@ import fmreader as f
 
 name, year = sys.argv[1], int(sys.argv[2])
 r = f.FMReader()
-vt, objs = r.player_vtable()
+vt, objs, _ = r.player_vtable()
 obj = None
 for a in objs:
     if r.name_entry(r.q(a + 0x60)) == name:

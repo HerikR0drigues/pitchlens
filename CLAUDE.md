@@ -7,8 +7,8 @@ esse arquivo atualizado quando mapear algo novo.
 
 ## Estrutura
 - `fmreader.py` — leitura da memória (ctypes + WinAPI). Só `PROCESS_VM_READ | PROCESS_QUERY_INFORMATION`.
-  **O app nunca escreve no processo.** Constantes de offset no topo; `ATRIBUTOS` (PT) / `ATTRIBUTES_EN`,
-  `POSICOES` / `POSITIONS_EN`, `GROUP_INDEX`, `preferred_foot()`, data do jogo estimada em `_game_date()`.
+  **O app nunca escreve no processo.** Constantes de offset no topo; `ATTRIBUTES`, `POSITIONS`, `GROUPS`,
+  `GROUP_INDEX`, `preferred_foot()`, data do jogo estimada em `_game_date()`.
 - `faces.py` — fotos do facepack do usuário (pasta Documentos via Windows, índice uid → arquivo). Fotos nativas do FM27 ficam em bundles do Unity e não são lidas.
 - `scout.py` — servidor `http.server` em `127.0.0.1:8770` (cai para a próxima porta livre; se já houver um scout
   rodando, só abre o navegador). Rotas: `/`, `/api/ping`, `/api/players`, `/api/refresh`, `/api/player?uid=`, `/api/face?uid=`,
@@ -20,6 +20,8 @@ esse arquivo atualizado quando mapear algo novo.
 
 ## Regras
 - Commits sem `Co-Authored-By` (nem outra atribuição ao Claude).
+- Código, comentários, docstrings e mensagens das ferramentas em **inglês** (projeto público). Textos da
+  interface ficam no `web/i18n.js` (EN/PT).
 - Nada de janela de console: tudo que o app abre usa `CREATE_NO_WINDOW` ou roda dentro do `Pitchlens.exe`.
 
 ## Dicas de ambiente

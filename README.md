@@ -99,6 +99,10 @@ ability, contract, positions, attributes…). The full method and the memory map
 
 **Is it safe for my save?** Yes. The process is opened with `PROCESS_VM_READ` only, so the tool cannot change the game.
 
+**Does it work if my game is in another language?** Yes. Pitchlens reads numbers and IDs, not text, so any game
+language works. Names of nations and clubs appear as the game stores them (in your game's language); everything
+else (attributes, positions, menus) follows the Pitchlens language you pick (English or Portuguese).
+
 **Does it work online / with mods?** It works with any single-player save, with or without database mods.
 
 **A game update broke it.** The app tries to rediscover the player class automatically. If fields still look wrong,

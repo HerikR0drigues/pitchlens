@@ -100,6 +100,10 @@ capacidade, contrato, posições, atributos…). O método completo e o mapa da 
 **É seguro para o meu save?** Sim. O processo é aberto só com `PROCESS_VM_READ`, então a ferramenta não consegue
 alterar o jogo.
 
+**Funciona se o meu jogo estiver em outro idioma?** Sim. O Pitchlens lê números e IDs, não textos, então qualquer
+idioma do jogo funciona. Os nomes de países e clubes aparecem como o jogo guarda (no idioma do seu jogo); o resto
+(atributos, posições, menus) segue o idioma escolhido no Pitchlens (inglês ou português).
+
 **Funciona com mods?** Funciona com qualquer save single-player, com ou sem mods de banco de dados.
 
 **Uma atualização do jogo quebrou.** O app tenta redescobrir a classe dos jogadores sozinho. Se os campos continuarem

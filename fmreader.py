@@ -15,58 +15,34 @@ from dataclasses import dataclass, asdict
 
 # ---------------------------------------------------------------- offsets
 MODULE = 'game_plugin.dll'
-RVA_PLAYER_VTABLE = 0x4E89908          # FM27 27.0.x (Steam) - ver CLAUDE.md
-RVA_CONTRACT_VTABLE = 0x4C5DFA8        # contratos (inclui pre-contratos / renovacoes futuras)
+RVA_PLAYER_VTABLE = 0x4E89908          # FM27 27.0.x (Steam) - see docs/TECHNICAL.md
+RVA_CONTRACT_VTABLE = 0x4C5DFA8        # contracts (also pre-contracts / future renewals)
 
-P_UID = 0x0C            # uint32, repetido em +0x10
-P_FLAGS = 0x19          # byte de flags: bit 0x10 = feminino
-P_CA = -0x24            # int16 (fica ANTES do vtable)
-P_PA = -0x22            # int16 (negativo = faixa de potencial, ex. -7)
-P_FIRST = 0x50          # -> entrada tabela de nomes -> +0 -> string
+P_UID = 0x0C            # uint32, repeated at +0x10
+P_FLAGS = 0x19          # flags byte: bit 0x10 = female
+P_CA = -0x24            # int16 (stored BEFORE the vtable)
+P_PA = -0x22            # int16 (negative = potential range, e.g. -7)
+P_FIRST = 0x50          # -> name table entry -> +0 -> string
 P_SECOND = 0x58
 P_COMMON = 0x60
-P_NATION = 0x68         # -> Nation: +0x18 nome, +0x28 sigla
-P_BIRTH = 0x88          # uint16 dia do ano, uint16 ano
-P_CONTRACT = 0xA8       # -> Contract (NULL = sem contrato)
+P_NATION = 0x68         # -> Nation: +0x18 name, +0x28 code
+P_BIRTH = 0x88          # uint16 day of year, uint16 year
+P_CONTRACT = 0xA8       # -> Contract (NULL = free agent)
 C_PLAYER = 0x08         # Contract -> Player
 C_CLUB = 0x10           # Contract -> Club
-C_START = 0x44          # uint16 dia do ano (& 0x1FF), uint16 ano - inicio do contrato
-C_END = 0x48            # uint16 dia do ano, uint16 ano
-C_STATUS = 0x57         # byte: 0x01 = lista de transferencias, 0x02 = lista de emprestimo
+C_START = 0x44          # uint16 day of year (& 0x1FF), uint16 year - contract start
+C_END = 0x48            # uint16 day of year, uint16 year
+C_STATUS = 0x57         # byte: 0x01 = transfer listed, 0x02 = loan listed
 CLUB_UID = 0x0C
-CLUB_NAMES = 0x30       # -> bloco: +0xC0 nome completo, +0xC8 nome curto
+CLUB_NAMES = 0x30       # -> block: +0xC0 full name, +0xC8 short name
 N_NAME, N_CODE = 0x18, 0x28
-P_POS = -0x138          # 15 bytes: familiaridade 1..20 por posicao (ordem em POSICOES)
-P_ATTR = -0x129         # 54 bytes: atributos 1..100 (exibido = (v+2)//5), ordem em ATRIBUTOS
+P_POS = -0x138          # 15 bytes: familiarity 1..20 per position (order in POSITIONS)
+P_ATTR = -0x129         # 54 bytes: attributes 1..100 (shown = (v+2)//5), order in ATTRIBUTES
 
-POSICOES = ['GOL', 'LIB', 'LE', 'ZAG', 'LD', 'VOL', 'ME', 'MC', 'MD',
-            'MEI-E', 'MEI', 'MEI-D', 'ATA', 'ALA-E', 'ALA-D']
-ATRIBUTOS = [
-    'Cruzamentos', 'Drible', 'Finalização', 'Cabeceamento', 'Remates de longe', 'Marcação',
-    'Sem bola', 'Passe', 'Penáltis', 'Desarme', 'Visão de jogo',
-    'Mãos', 'Jogo aéreo', 'Comando da área', 'Comunicação', 'Pontapé', 'Lançamento com mãos',
-    'Antecipação', 'Decisões', 'Um contra um', 'Posicionamento', 'Reflexos',
-    'Primeiro toque', 'Técnica', 'Pé esquerdo', 'Pé direito', 'Imprevisibilidade', 'Cantos',
-    'Trabalho de equipa', 'Índice de trabalho', 'Lançamentos longos', 'Excentricidade',
-    'Saídas', 'Socar a bola', 'Aceleração', 'Livres', 'Força', 'Resistência', 'Velocidade',
-    'Impulsão', 'Liderança', 'Agressividade (oculto)', 'Equilíbrio', 'Bravura',
-    'Consistência', 'Agressividade', 'Agilidade', 'Jogos importantes', 'Propensão a lesões',
-    'Versatilidade', 'Aptidão física', 'Determinação', 'Compostura', 'Concentração']
-# Observacao: indice 41 no FM e "Dirtiness" (jogo sujo); rotulado em GRUPOS como 'Jogo sujo'.
-ATRIBUTOS[41] = 'Jogo sujo'
-GRUPOS = {
-    'Técnicos': ['Cabeceamento', 'Cruzamentos', 'Desarme', 'Drible', 'Finalização', 'Marcação', 'Passe',
-                 'Primeiro toque', 'Remates de longe', 'Técnica', 'Cantos', 'Livres', 'Lançamentos longos', 'Penáltis'],
-    'Mentais': ['Agressividade', 'Antecipação', 'Bravura', 'Compostura', 'Concentração', 'Decisões', 'Determinação',
-                'Imprevisibilidade', 'Índice de trabalho', 'Liderança', 'Posicionamento', 'Sem bola',
-                'Trabalho de equipa', 'Visão de jogo'],
-    'Físicos': ['Aceleração', 'Agilidade', 'Aptidão física', 'Equilíbrio', 'Força', 'Impulsão', 'Resistência', 'Velocidade'],
-    'Goleiro': ['Comando da área', 'Comunicação', 'Excentricidade', 'Jogo aéreo', 'Lançamento com mãos', 'Mãos',
-                'Pontapé', 'Reflexos', 'Saídas', 'Socar a bola', 'Um contra um'],
-    'Ocultos': ['Consistência', 'Jogo sujo', 'Jogos importantes', 'Propensão a lesões', 'Versatilidade'],
-}
-# Same order as ATRIBUTOS (English labels used by the web UI).
-ATTRIBUTES_EN = [
+# Position order in memory (P_POS). The UI has its own labels per language (web/i18n.js).
+POSITIONS = ['GK', 'SW', 'DL', 'DC', 'DR', 'DM', 'ML', 'MC', 'MR', 'AML', 'AMC', 'AMR', 'ST', 'WBL', 'WBR']
+# Attribute order in memory (P_ATTR). Index 41 is the hidden "Dirtiness", index 45 the visible "Aggression".
+ATTRIBUTES = [
     'Crossing', 'Dribbling', 'Finishing', 'Heading', 'Long Shots', 'Marking',
     'Off the Ball', 'Passing', 'Penalty Taking', 'Tackling', 'Vision',
     'Handling', 'Aerial Reach', 'Command of Area', 'Communication', 'Kicking', 'Throwing',
@@ -77,11 +53,20 @@ ATTRIBUTES_EN = [
     'Jumping Reach', 'Leadership', 'Dirtiness', 'Balance', 'Bravery',
     'Consistency', 'Aggression', 'Agility', 'Important Matches', 'Injury Proneness',
     'Versatility', 'Natural Fitness', 'Determination', 'Composure', 'Concentration']
-POSITIONS_EN = ['GK', 'SW', 'DL', 'DC', 'DR', 'DM', 'ML', 'MC', 'MR', 'AML', 'AMC', 'AMR', 'ST', 'WBL', 'WBR']
-# Group id -> attribute indexes (language independent).
-GROUP_INDEX = {k: [ATRIBUTOS.index(a) for a in v] for k, v in zip(
-    ('technical', 'mental', 'physical', 'goalkeeping', 'hidden'), GRUPOS.values())}
-FOOT_LEFT, FOOT_RIGHT = ATRIBUTOS.index('Pé esquerdo'), ATRIBUTOS.index('Pé direito')
+GROUPS = {
+    'technical': ['Corners', 'Crossing', 'Dribbling', 'Finishing', 'First Touch', 'Free Kicks', 'Heading',
+                  'Long Shots', 'Long Throws', 'Marking', 'Passing', 'Penalty Taking', 'Tackling', 'Technique'],
+    'mental': ['Aggression', 'Anticipation', 'Bravery', 'Composure', 'Concentration', 'Decisions', 'Determination',
+               'Flair', 'Leadership', 'Off the Ball', 'Positioning', 'Teamwork', 'Vision', 'Work Rate'],
+    'physical': ['Acceleration', 'Agility', 'Balance', 'Jumping Reach', 'Natural Fitness', 'Pace', 'Stamina',
+                 'Strength'],
+    'goalkeeping': ['Aerial Reach', 'Command of Area', 'Communication', 'Eccentricity', 'Handling', 'Kicking',
+                    'One on Ones', 'Punching', 'Reflexes', 'Rushing Out', 'Throwing'],
+    'hidden': ['Consistency', 'Dirtiness', 'Important Matches', 'Injury Proneness', 'Versatility'],
+}
+# Group id -> attribute indexes (what the UI uses; labels come from web/i18n.js).
+GROUP_INDEX = {k: [ATTRIBUTES.index(a) for a in v] for k, v in GROUPS.items()}
+FOOT_LEFT, FOOT_RIGHT = ATTRIBUTES.index('Left Foot'), ATTRIBUTES.index('Right Foot')
 
 
 def preferred_foot(attrs: list) -> str:
@@ -151,11 +136,11 @@ class Player:
     lista_transf: bool
     lista_emprest: bool
     feminino: bool
-    pos: list          # 15 valores 1..20 (ordem POSICOES)
-    attrs: list        # 54 valores 1..20 (ordem ATRIBUTOS)
+    pos: list          # 15 values 1..20 (order in POSITIONS)
+    attrs: list        # 54 values 1..20 (order in ATTRIBUTES)
     pe: str            # 'L' / 'R' / 'B'
-    pre_clube: str = ''   # pre-contrato assinado com outro clube (vazio = nenhum)
-    pre_ano: int = 0      # inicio do pre-contrato
+    pre_clube: str = ''   # pre-contract already signed with another club ('' = none)
+    pre_ano: int = 0      # pre-contract start
     pre_dia: int = 0
 
 
@@ -285,8 +270,8 @@ class FMReader:
 
     # ------------------------------------------------------------ vtable
     def player_vtable(self) -> tuple[int, list[int], list[int]]:
-        """Tenta o RVA conhecido; se a versao do FM mudou, descobre sozinho.
-        Devolve (vtable, objetos jogador, objetos contrato)."""
+        """Try the known RVA; if FM was updated, discover the player class by itself.
+        Returns (vtable, player objects, contract objects)."""
         vt = self.module_base + RVA_PLAYER_VTABLE
         cvt = struct.pack('<Q', self.module_base + RVA_CONTRACT_VTABLE)
         hits = self.find_many([struct.pack('<Q', vt), cvt])
@@ -296,8 +281,8 @@ class FMReader:
         return vt, hits[struct.pack('<Q', vt)], hits[cvt]
 
     def discover_vtable(self, sample_bytes: int = 256 << 20) -> int:
-        """Procura o ponteiro mais comum para dentro do game_plugin.dll que tenha
-        o padrao [vtable][int32][uid][uid] e CA/PA plausiveis em -0x24/-0x22."""
+        """Find the most common pointer into game_plugin.dll with the [vtable][int32][uid][uid] shape
+        and plausible CA/PA at -0x24/-0x22."""
         lo, hi = self.module_base, self.module_base + self.module_size
         counts: collections.Counter[int] = collections.Counter()
         seen = 0
@@ -323,7 +308,7 @@ class FMReader:
     def players(self) -> tuple[list[Player], dict]:
         t0 = time.time()
         vt, objs, contracts = self.player_vtable()
-        by_addr: dict[int, tuple[Player, int, int]] = {}  # player addr -> (player, contrato atual, clube atual)
+        by_addr: dict[int, tuple[Player, int, int]] = {}  # player addr -> (player, current contract, current club)
         out: list[Player] = []
         starts: collections.Counter[tuple[int, int]] = collections.Counter()
         pre = -P_POS

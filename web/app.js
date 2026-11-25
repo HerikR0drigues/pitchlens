@@ -3,7 +3,7 @@
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const URLP = new URLSearchParams(location.search);
 
-// ---------- positions (indexes follow fmreader.POSICOES)
+// ---------- positions (indexes follow fmreader.POSITIONS)
 // grid on the mini pitch: [column 1..5, row 1..7], attack on top
 const GRID = {12:[3,1],9:[1,2],10:[3,2],11:[5,2],6:[1,3],7:[3,3],8:[5,3],13:[1,4],5:[3,4],14:[5,4],2:[1,5],3:[3,5],4:[5,5],1:[3,6],0:[3,7]};
 const PXY = {0:[50,92],1:[50,80],2:[14,70],3:[50,70],4:[86,70],13:[14,56],14:[86,56],5:[50,57],6:[14,41],7:[50,42],8:[86,41],9:[17,26],10:[50,26],11:[83,26],12:[50,10]};

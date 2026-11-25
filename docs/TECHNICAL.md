@@ -50,7 +50,7 @@ Offsets are relative to the object start (where the vtable pointer is).
 | Offset | Type | Field |
 |---|---|---|
 | `-0x138` | 15 × uint8 | position familiarity 1–20 (order: GK, SW, DL, DC, DR, DM, ML, MC, MR, AML, AMC, AMR, ST, WBL, WBR) |
-| `-0x129` | 54 × uint8 | attributes 1–100; displayed value = `(v + 2) // 5` (order in `fmreader.ATRIBUTOS`) |
+| `-0x129` | 54 × uint8 | attributes 1–100; displayed value = `(v + 2) // 5` (order in `fmreader.ATTRIBUTES`) |
 | `-0x24` | int16 | current ability (CA) |
 | `-0x22` | int16 | potential ability (PA; negative = editor range, resolved in a running save) |
 | `+0x00` | ptr | vtable |

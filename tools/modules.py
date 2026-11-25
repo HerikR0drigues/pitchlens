@@ -1,3 +1,6 @@
+"""Show which module (DLL) an address belongs to and its RVA, e.g. to turn a vtable pointer into an RVA.
+Usage: py -I tools/modules.py 0xADDR [0xADDR ...]
+"""
 import ctypes, ctypes.wintypes as wt, sys
 sys.path.insert(0, '.')
 import memscan as m

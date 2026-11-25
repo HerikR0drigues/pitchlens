@@ -72,7 +72,7 @@ const I18N = {
     err_player_not_found: 'Jogador não encontrado. Atualize os dados.',
   },
 };
-// Attribute labels in the same order as fmreader.ATRIBUTOS.
+// Attribute labels in the same order as fmreader.ATTRIBUTES.
 const ATTR_NAMES = {
   en: ['Crossing','Dribbling','Finishing','Heading','Long Shots','Marking','Off the Ball','Passing','Penalty Taking','Tackling','Vision',
     'Handling','Aerial Reach','Command of Area','Communication','Kicking','Throwing','Anticipation','Decisions','One on Ones','Positioning','Reflexes',
@@ -85,7 +85,7 @@ const ATTR_NAMES = {
     'Saídas','Socar a bola','Aceleração','Livres','Força','Resistência','Velocidade','Impulsão','Liderança','Jogo sujo','Equilíbrio','Bravura',
     'Consistência','Agressividade','Agilidade','Jogos importantes','Propensão a lesões','Versatilidade','Aptidão física','Determinação','Compostura','Concentração'],
 };
-// Position labels in the same order as fmreader.POSICOES.
+// Position labels in the same order as fmreader.POSITIONS.
 const POS_NAMES = {
   en: ['GK','SW','DL','DC','DR','DM','ML','MC','MR','AML','AMC','AMR','ST','WBL','WBR'],
   pt: ['GOL','LIB','LE','ZAG','LD','VOL','ME','MC','MD','MEI-E','MEI','MEI-D','ATA','ALA-E','ALA-D'],

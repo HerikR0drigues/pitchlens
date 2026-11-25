@@ -1,6 +1,12 @@
-"""Leitor de memoria SOMENTE LEITURA do fm.exe (fase de pesquisa).
-Uso: py -I memscan.py find "texto" [texto2 ...]
-     py -I memscan.py dump 0xADDR tamanho
+"""READ-ONLY memory scanner for fm.exe (research tool used to map the data).
+Usage: py -I tools/memscan.py find "text" [text2 ...]
+       py -I tools/memscan.py dump 0xADDR size
+       py -I tools/memscan.py near UID CA PA [window]
+       py -I tools/memscan.py vt 0xVTABLE
+       py -I tools/memscan.py ptrs 0xADDR size [depth]
+       py -I tools/memscan.py year 0xADDR YEAR
+       py -I tools/memscan.py strs 0xADDR size
+       py -I tools/memscan.py whoref "text"
 """
 import ctypes, ctypes.wintypes as wt, sys, struct, subprocess
 sys.stdout.reconfigure(encoding='utf-8', errors='replace')
@@ -28,14 +34,14 @@ def fm_pid():
     out = subprocess.run(['tasklist', '/FI', 'IMAGENAME eq fm.exe', '/FO', 'CSV', '/NH'],
                          capture_output=True, text=True).stdout.strip().splitlines()
     if not out or 'fm.exe' not in out[0]:
-        sys.exit('fm.exe nao esta rodando')
+        sys.exit('fm.exe is not running')
     return int(out[0].split('","')[1])
 
 
 def open_proc():
     h = k32.OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, False, fm_pid())
     if not h:
-        sys.exit(f'OpenProcess falhou: {ctypes.get_last_error()}')
+        sys.exit(f'OpenProcess failed: {ctypes.get_last_error()}')
     return h
 
 
@@ -84,18 +90,18 @@ if __name__ == '__main__':
         for t in sys.argv[2:]:
             needles += [t.encode('utf-8'), t.encode('utf-16-le')]
         hits, total = find(h, needles)
-        print(f'lidos {total/2**30:.2f} GB')
+        print(f'read {total/2**30:.2f} GB')
         for n, lst in hits.items():
             enc = 'utf16' if b'\x00' in n else 'utf8'
             print(f'{n.decode("utf-16-le" if enc=="utf16" else "utf-8")!r} [{enc}]: {len(lst)} -> ' +
                   ' '.join(hex(a) for a in lst[:8]))
     elif cmd == 'near':
-        # near UID CA PA [janela]: acha int32 UID e procura int16 CA e PA por perto
+        # near UID CA PA [window]: find the int32 UID and look for int16 CA and PA around it
         uid, ca, pa = int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4])
         win = int(sys.argv[5]) if len(sys.argv) > 5 else 0x800
         hits, _ = find(h, [struct.pack('<I', uid)], limit=200)
         lst = hits[struct.pack('<I', uid)]
-        print(f'UID {uid}: {len(lst)} ocorrencias')
+        print(f'UID {uid}: {len(lst)} hits')
         for a in lst:
             data = read(h, a - win, 2 * win)
             res = []
@@ -108,11 +114,11 @@ if __name__ == '__main__':
                     i = data.find(pat, i + 1)
             print(hex(a), ' '.join(res[:30]))
     elif cmd == 'vt':
-        # vt VTABLE: lista objetos com esse ponteiro de classe, le UID(+0xC) e CA/PA(-0x24/-0x22)
+        # vt VTABLE: list objects with this class pointer, read UID (+0xC) and CA/PA (-0x24/-0x22)
         vt = int(sys.argv[2], 16)
         hits, _ = find(h, [struct.pack('<Q', vt)], limit=10**7)
         lst = hits[struct.pack('<Q', vt)]
-        print(f'objetos: {len(lst)}')
+        print(f'objects: {len(lst)}')
         import collections
         okc = 0
         rows = []
@@ -125,13 +131,13 @@ if __name__ == '__main__':
             if uid1 == uid2:
                 okc += 1
                 rows.append((uid1, ca, pa))
-        print(f'com UID duplicado: {okc}')
+        print(f'with repeated UID: {okc}')
         cas = collections.Counter(min(r[1] // 20 * 20, 200) for r in rows)
-        print('faixas de CA:', sorted(cas.items()))
+        print('CA ranges:', sorted(cas.items()))
         for r in rows[:15]:
             print(r)
     elif cmd == 'ptrs':
-        # ptrs ADDR tamanho [profundidade]: segue ponteiros e mostra textos encontrados
+        # ptrs ADDR size [depth]: follow pointers and show the strings found
         base, size = int(sys.argv[2], 16), int(sys.argv[3], 0)
         depth = int(sys.argv[4]) if len(sys.argv) > 4 else 2
         def txt(b):
@@ -160,7 +166,7 @@ if __name__ == '__main__':
                         walk(p, f'{path}+{off:#x}->', d - 1)
         walk(base, 'obj', depth)
     elif cmd == 'year':
-        # year ADDR ANO: procura int16 ANO no objeto e nos objetos apontados (1 nivel)
+        # year ADDR YEAR: look for int16 YEAR in the object and in the objects it points to (1 level)
         base, yr = int(sys.argv[2], 16), int(sys.argv[3])
         pat = struct.pack('<H', yr)
         def scan(addr, label, n):
@@ -169,7 +175,7 @@ if __name__ == '__main__':
             while i != -1:
                 if i % 2 == 0 and i >= 2:
                     day = struct.unpack_from('<H', d, i - 2)[0]
-                    print(f'{label}+{i:#x}: dia {day} ano {yr}')
+                    print(f'{label}+{i:#x}: day {day} year {yr}')
                 i = d.find(pat, i + 1)
             return d
         d = scan(base, 'obj', 0x400)
@@ -178,7 +184,7 @@ if __name__ == '__main__':
             if 0x10000000000 <= p < 0x7ff000000000:
                 scan(p, f'obj+{off:#x}->', 0x200)
     elif cmd == 'strs':
-        # strs ADDR tamanho: le cada ponteiro do objeto como string [len int32][utf8]
+        # strs ADDR size: read each pointer of the object as a [len int32][utf8] string
         base, size = int(sys.argv[2], 16), int(sys.argv[3], 0)
         d = read(h, base, size)
         for off in range(0, len(d) - 7, 8):
@@ -195,7 +201,7 @@ if __name__ == '__main__':
                         except UnicodeDecodeError:
                             pass
     elif cmd == 'whoref':
-        # whoref "texto": acha string len-prefixada e quem aponta para ela (2 niveis)
+        # whoref "text": find a length-prefixed string and who points to it (2 levels)
         txt = sys.argv[2].encode('utf-8')
         hits, _ = find(h, [txt], limit=50)
         starts = []
@@ -208,12 +214,12 @@ if __name__ == '__main__':
             pats = [struct.pack('<Q', x) for x in starts]
             r1, _ = find(h, pats, limit=50)
             lvl1 = [a for p in pats for a in r1[p]]
-            print('nivel1 (entradas que apontam):', [hex(x) for x in lvl1[:20]])
+            print('level 1 (entries pointing to it):', [hex(x) for x in lvl1[:20]])
             pats2 = [struct.pack('<Q', x) for x in lvl1[:20]]
             if pats2:
                 r2, _ = find(h, pats2, limit=50)
                 for p in pats2:
-                    print(f'  quem aponta p/ {struct.unpack("<Q", p)[0]:#x}:', [hex(x) for x in r2[p][:10]])
+                    print(f'  pointing to {struct.unpack("<Q", p)[0]:#x}:', [hex(x) for x in r2[p][:10]])
     elif cmd == 'dump':
         addr, size = int(sys.argv[2], 16), int(sys.argv[3], 0)
         data = read(h, addr, size)
