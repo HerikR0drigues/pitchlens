@@ -338,9 +338,11 @@ document.addEventListener('keydown', e => {
   if (e.key === '/' && !['INPUT', 'SELECT'].includes(document.activeElement.tagName)) { e.preventDefault(); $('#q').focus(); }
 });
 
-// ---------- boot (URL params win: ?lang=en|pt&theme=dark|light&p=<uid>)
+// ---------- boot (URL params win: ?lang=en|pt&theme=dark|light&sit=<situation>&q=<search>&p=<uid>)
 if (URLP.get('lang')) F.lang = URLP.get('lang') === 'pt' ? 'pt' : 'en';
 if (!F.lang) F.lang = (navigator.language || 'en').toLowerCase().startsWith('pt') ? 'pt' : 'en';
+if (SIT.some(s => s[0] === URLP.get('sit'))) F.sit = URLP.get('sit');
+if (URLP.has('q')) F.q = URLP.get('q');
 if (URLP.get('theme')) F.theme = URLP.get('theme') === 'light' ? 'light' : 'dark';
 applyTheme(); applyLang(); sync(); setStatus(); render();
 load('/api/players');

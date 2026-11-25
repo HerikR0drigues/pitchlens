@@ -14,7 +14,7 @@ esse arquivo atualizado quando mapear algo novo.
   rodando, só abre o navegador). Rotas: `/`, `/api/ping`, `/api/players`, `/api/refresh`, `/api/player?uid=`, `/api/face?uid=`,
   arquivos estáticos de `web/`. Erros vêm com `erro_code` (`not_running`, `no_save`, `access`, `read_error`).
 - `web/` — `index.html`, `style.css`, `app.js`, `i18n.js` (textos EN/PT, nomes de atributos e posições).
-  Sem build, sem CDN. Parâmetros de URL: `?lang=en|pt&theme=dark|light&p=<uid>`.
+  Sem build, sem CDN. Parâmetros de URL: `?lang=en|pt&theme=dark|light&sit=<situacao>&q=<busca>&p=<uid>`.
 - `tools/` — `memscan.py`, `find_attrs.py`, `modules.py` (pesquisa) e `screenshots.py` (prints do README via Edge headless).
 - `Pitchlens.exe` (fonte em `launcher/Pitchlens.cs`, C# 5 — o csc do .NET Framework não aceita sintaxe nova; build com `launcher\build.bat`) é a janela: WinForms + WebView2 (`runtime/`), liga `pythonw Pitchlens.pyw --server --port N`, chama `/api/quit` ao fechar e cria os atalhos na 1ª vez. Neste PC `.py/.pyw` não têm associação de arquivo e o usuário não quer ver cmd nem Edge.
 
