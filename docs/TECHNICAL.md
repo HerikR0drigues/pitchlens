@@ -20,6 +20,8 @@ fm.exe (game_plugin.dll)  --ReadProcessMemory-->  fmreader.py  -->  scout.py (12
 | `Pitchlens.exe` · `launcher/` | The desktop window (C#, WinForms + WebView2, GUI subsystem so no console). Starts `pythonw Pitchlens.pyw --server --port N` hidden, waits for `/api/ping`, shows the UI, calls `/api/quit` on close, creates Desktop/Start Menu shortcuts on the first run. Rebuild with `launcher\build.bat` (uses the `csc.exe` that ships with Windows). |
 | `runtime/` | Microsoft WebView2 SDK 1.0.4370.26 (`Core`, `WinForms`, x64 `WebView2Loader.dll`) from NuGet, signed by Microsoft, BSD-style license. |
 | `Pitchlens.pyw` | Server mode for the window: logs to `%LOCALAPPDATA%\Pitchlens`, stops on `/api/quit` or when the page stops pinging `/api/ping?alive=1` for 3 min. Without `--server` it opens the default browser. |
+| `web/roles.js` · `web/tools.js` | Role ratings and similar players; compare, best XI, progress history and notes (history and notes live in the browser's localStorage). |
+| `tests/` | `py -m unittest discover -s tests` (reader decoding, pre-contracts, release clauses, payloads, update check, face-pack index) and `node --test tests/web.test.js` (role ratings, similar players, best XI). CI runs both on every push. |
 | `tools/` | Research scripts used to map the memory (`memscan.py`, `find_attrs.py`, `modules.py`) and `screenshots.py` for the README images. |
 
 A full read of ~80k players takes 15–35 s; afterwards everything is filtered in the browser.

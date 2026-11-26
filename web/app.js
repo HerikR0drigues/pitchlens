@@ -35,7 +35,7 @@ if (!Array.isArray(F.pos) || F.pos.some(p => typeof p !== 'number')) F.pos = [];
 if (![18,15,10].includes(+F.posMin)) F.posMin = 15;
 if (!['','L','R','B'].includes(F.foot)) F.foot = '';
 let FAV = new Set(store('fav') || []);
-let ALL = [], VIEW = [], BASE = [], META = null, shown = 0, lastErr = null, BY_UID = new Map();
+let ALL = [], VIEW = [], BASE = [], META = null, shown = 0, lastErr = null, BY_UID = new Map(), GROUPS = {};
 if (!ROLE_BY_ID[F.role]) F.role = ''; if (!LISTS[F.list]) F.list = '';
 const PAGE = 200;
 
@@ -154,7 +154,7 @@ function apply() {
     || (F.sit === 'transfer' && p.transfer_listed) || (F.sit === 'loan' && p.loan_listed) || (F.sit === 'pre' && p.pre_club) || (F.sit === 'fav' && FAV.has(p.uid));
   for (const p of ALL) {
     if (q) {                                   // global search: ignores every other filter
-      if (!p._n.includes(q) && !p._c.includes(q) && !norm(p.pre_club || '').includes(q)) continue;
+      if (!p._n.includes(q) && !p._c.includes(q) && !norm(p.pre_club || '').includes(q) && !noteMatch(p, q)) continue;
       p.gap = p.pa - p.ca; p.age = p.birth_year ? ano - p.birth_year : 0;
       cnt.all++; BASE.push(p); VIEW.push(p); continue;
     }
@@ -211,10 +211,10 @@ function render() {
   $('#rows').innerHTML = VIEW.slice(0, shown).map(p => {
     const nat = natural(p).slice(0, 3);
     return `<tr data-uid="${p.uid}"><td><button class="star ${FAV.has(p.uid) ? 'on' : ''}" data-fav="${p.uid}" title="${esc(t(FAV.has(p.uid) ? 'removeFav' : 'addFav'))}">${STAR}</button></td>
-    <td><div class="pl">${avatar(p)}<div><div class="nm">${esc(p.name)}</div><div class="sub">${p.female ? esc(t('female_tag')) + ' · ' : ''}${esc(p.nation_code || '')}${p.nation_code ? ' · ' : ''}ID ${p.uid}</div></div></div></td>
+    <td><div class="pl">${avatar(p)}<div><div class="nm">${esc(p.name)}${noteTag(p)}</div><div class="sub">${p.female ? esc(t('female_tag')) + ' · ' : ''}${esc(p.nation_code || '')}${p.nation_code ? ' · ' : ''}ID ${p.uid}</div></div></div></td>
     <td><div class="poss">${footTag(p)}${nat.map(([v, i]) => `<span class="pt ${v >= 18 ? 'n' : ''}">${posName(i)}</span>`).join('') || '<span class="sub">—</span>'}</div><div class="brole">${p.a ? esc(roleName(bestRole(p))) + ' · ' + p._bestR : ''}</div></td>
     ${F.role ? `<td class="r">${rating100(p.role)}</td>` : ''}
-    <td class="r">${p.age || '—'}</td><td class="r">${rating(p.ca)}</td><td class="r">${rating(p.pa)}</td>
+    <td class="r">${p.age || '—'}</td><td class="r">${progTag(p)}${rating(p.ca)}</td><td class="r">${rating(p.pa)}</td>
     <td class="r gap" style="color:${p.gap >= 25 ? '#22c55e' : p.gap >= 10 ? 'var(--text)' : 'var(--faint)'}">${p.gap > 0 ? '+' : ''}${p.gap}</td>
     <td>${esc(p.nation)}<span class="flag">${esc(p.nation_code)}</span></td>
     <td class="r wage">${p.wage ? money(wageOf(p)) : '<span class="sub">—</span>'}</td>
@@ -251,7 +251,7 @@ async function openPlayer(uid) {
     .map(([k, v]) => `<div class="ar"><span>${esc(k)}</span><b style="color:${tone20(v)};background:${tone20(v)}1a">${v}</b></div>`).join('')}</div>`;
   $('#drawer').innerHTML = `
    <div class="dh">${avatar(p)}<div><h2>${esc(p.name)}</h2><div class="meta">${age} ${esc(t('years'))} · ${esc(p.nation)} · ${nat.map(x => posName(x[1])).join(' / ') || '—'}</div></div>
-     <div class="acts"><button class="btn icon star ${FAV.has(p.uid) ? 'on' : ''}" id="dfav" data-uid="${p.uid}" title="${esc(t('addFav'))}">${STAR}</button>
+     <div class="acts"><button class="btn icon ${inCompare(p.uid) ? 'on' : ''}" id="dcmp" title="${esc(t('addCompare'))}">⇄</button><button class="btn icon star ${FAV.has(p.uid) ? 'on' : ''}" id="dfav" data-uid="${p.uid}" title="${esc(t('addFav'))}">${STAR}</button>
      <button class="btn icon" id="dlink" title="${esc(t('copyLink'))}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg></button>
      <button class="btn icon" id="dclose" title="${esc(t('close'))}">✕</button></div></div>
    <div class="dbody">
@@ -276,11 +276,15 @@ async function openPlayer(uid) {
       <div class="card"><h4>${esc(t('positions'))}</h4>${bigPitch(p.pos)}
         <div class="feet"><div><div class="sub">${esc(t('leftFoot'))}</div><b>${esc(foot(A[24]))}</b></div><div><div class="sub">${esc(t('rightFoot'))}</div><b>${esc(foot(A[25]))}</b></div></div></div>
     </div>
+    ${historyCard(p.uid)}
+    ${noteCard(p.uid)}
     <div class="card"><h4>${esc(t('attributes'))}</h4><div class="attrs">${isGK ? col('goalkeeping') : col('technical')}${col('mental')}${col('physical')}</div></div>
     <div class="card"><h4>${esc(t('hidden'))}</h4><div class="attrs">${col('hidden')}</div></div>
     <div class="note">ⓘ ${esc(t('attrNote'))}</div>
    </div>`;
   $('#dclose').onclick = closeDrawer;
+  $('#dcmp').onclick = () => toggleCompare(p.uid);
+  wireNote(p.uid); noteRecent(p.uid);
   $$('#drawer .simrow').forEach(b => b.onclick = () => openPlayer(+b.dataset.uid));
   $('#dfav').onclick = () => toggleFav(p.uid);
   $('#dlink').onclick = () => { const u = new URL(location.href); u.searchParams.set('p', p.uid); navigator.clipboard?.writeText(u.href); toast(t('linkCopied')); };
@@ -288,7 +292,7 @@ async function openPlayer(uid) {
   const u = new URL(location.href); u.searchParams.set('p', p.uid); history.replaceState(null, '', u);
 }
 function closeDrawer() {
-  $('#drawer').classList.remove('on'); $('#shade').classList.remove('on');
+  $('#drawer').classList.remove('on'); if (!$('#panel').classList.contains('on')) $('#shade').classList.remove('on');
   const u = new URL(location.href); u.searchParams.delete('p'); history.replaceState(null, '', u);
 }
 function radar(ax) {
@@ -307,6 +311,16 @@ function bigPitch(pos) {
   }).join('')}</div>`;
 }
 
+// ---------- update check (the server asks GitHub for the latest release once per run)
+let updChecked = false;
+async function checkUpdate() {
+  if (updChecked) return; updChecked = true;
+  try {
+    const r = await (await fetch('/api/update')).json();
+    if (r.newer && /^https:\/\/github\.com\//.test(r.url)) { const a = $('#upd'); a.href = r.url; a.textContent = t('newVersion', {v: r.latest}); a.hidden = false; }
+  } catch { /* offline: ignore */ }
+}
+
 // ---------- data
 async function load(path, tries = 0) {
   const b = $('#refresh'); b.disabled = true; b.innerHTML = `<span class="spin"></span>${esc(t('reading'))}`;
@@ -318,7 +332,8 @@ async function load(path, tries = 0) {
       META = r.meta;
       const c = r.fields;
       ALL = r.rows.map(row => { const o = {}; c.forEach((k, i) => o[k] = row[i]); o._n = norm(o.name); o._c = norm(o.club); return o; });
-      BY_UID = new Map(ALL.map(p => [p.uid, p]));
+      BY_UID = new Map(ALL.map(p => [p.uid, p])); GROUPS = r.groups || {};
+      recordHistory(); renderCmpBar(); checkUpdate();
       fillNations();
     }
     setStatus();
@@ -386,7 +401,8 @@ $('#reset').onclick = () => { F = Object.assign({}, DEF, {theme: F.theme, lang: 
 $('#posClear').onclick = () => { F.pos = []; sync(); apply(); };
 $('#theme').onclick = () => { F.theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'; applyTheme(); RANGES.forEach(([id]) => drawHist($('#' + id))); store('filters', F); };
 $('#lang').onclick = () => { F.lang = LANG() === 'pt' ? 'en' : 'pt'; applyLang(); if (ALL.length) fillNations(); sync(); setStatus(); apply(); };
-$('#shade').onclick = closeDrawer;
+$('#shade').onclick = () => { closePanel(); closeDrawer(); };
+$('#xiBtn').onclick = openBestXI;
 $('#csv').onclick = () => {
   // basic data only: the FM EULA does not allow exporting ratings/attributes in bulk
   const cols = ['name', 'age', 'nation', 'club', 'contract_year', 'free', 'transfer_listed', 'loan_listed', 'pre_club', 'uid'];
@@ -394,7 +410,7 @@ $('#csv').onclick = () => {
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + lines.join('\n')], {type: 'text/csv;charset=utf-8'})); a.download = 'pitchlens.csv'; a.click();
 };
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') closeDrawer();
+  if (e.key === 'Escape') { if ($('#panel').classList.contains('on')) closePanel(); else closeDrawer(); }
   if (e.key === '/' && !['INPUT', 'SELECT'].includes(document.activeElement.tagName)) { e.preventDefault(); $('#q').focus(); }
 });
 
@@ -405,7 +421,7 @@ if (SIT.some(s => s[0] === URLP.get('sit'))) F.sit = URLP.get('sit');
 if (URLP.has('q')) F.q = URLP.get('q');
 if (ROLE_BY_ID[URLP.get('role')]) { F.role = URLP.get('role'); F.sort = 'role'; F.dir = -1; }
 if (URLP.get('theme')) F.theme = URLP.get('theme') === 'light' ? 'light' : 'dark';
-applyTheme(); applyLang(); sync(); setStatus(); render();
+toolsInit(); applyTheme(); applyLang(); sync(); setStatus(); render();
 load('/api/players');
 // heartbeat: in desktop mode the server stops by itself a few minutes after the window is gone
 const alive = () => fetch('/api/ping?alive=1').catch(() => {});

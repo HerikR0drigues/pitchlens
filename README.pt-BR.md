@@ -11,6 +11,8 @@ interface web rápida e moderna.
 
 [English](README.md) · [Notas técnicas (inglês)](docs/TECHNICAL.md) · [Identidade visual](docs/brand/README.md)
 
+[![Download](https://img.shields.io/github/v/release/HerikR0drigues/pitchlens?label=download)](https://github.com/HerikR0drigues/pitchlens/releases/latest)
+[![Testes](https://github.com/HerikR0drigues/pitchlens/actions/workflows/tests.yml/badge.svg)](https://github.com/HerikR0drigues/pitchlens/actions/workflows/tests.yml)
 ![Windows](https://img.shields.io/badge/plataforma-Windows-0078D6)
 ![Python](https://img.shields.io/badge/python-3.10%2B-3776AB)
 ![Dependências](https://img.shields.io/badge/depend%C3%AAncias-nenhuma-success)
@@ -34,6 +36,10 @@ e **não tem dependências**: só Python e o seu navegador.
 
 | | |
 |---|---|
+| ⚖️ **Comparar jogadores** | Até 3 jogadores lado a lado — notas, funções, salário, contrato e todos os atributos, com o melhor valor destacado |
+| 🟩 **Melhor XI** | Escolha um clube (ou seus favoritos) e uma formação: a escalação mais forte, reservas e os pontos fracos, com *Buscar reforço* para cada um |
+| 📈 **Evolução** | CA/PA dos favoritos e dos jogadores vistos recentemente ficam registrados a cada leitura, com gráfico na ficha |
+| ✎ **Anotações** | Escreva anotações em qualquer jogador; elas entram na busca |
 | 🧭 **Nota por função** | Nota de 0 a 100 para 24 funções (ponta, zagueiro construtor, matador…), melhor função de cada jogador, filtro e ordenação por função |
 | 👯 **Jogadores parecidos** | Em cada ficha: os jogadores com atributos mais parecidos, com idade, clube e salário |
 | 💰 **Salário, multa e status no elenco** | Na tabela e na ficha, em £, €, $ ou R$, por semana ou por mês |
@@ -62,14 +68,17 @@ e **não tem dependências**: só Python e o seu navegador.
 
 ## Como usar
 
-1. Baixe este repositório (**Code → Download ZIP**) e extraia a pasta inteira, ou faça `git clone`.
+1. Baixe o **`Pitchlens-x.y.z.zip`** da [última versão](https://github.com/HerikR0drigues/pitchlens/releases/latest) e extraia a pasta inteira.
+   (Ou **Code → Download ZIP** / `git clone` para a versão em desenvolvimento.)
 2. Abra o Football Manager 27 e **carregue o seu save**.
 3. Dê dois cliques em **`Pitchlens.exe`**.
 4. O Pitchlens abre na própria janela, como qualquer programa (sem tela preta, sem navegador).
    A primeira leitura do save leva de 15 a 35 segundos.
 5. Clique em **Atualizar do jogo** sempre que quiser os dados novos. Fechou a janela, fechou o Pitchlens.
 
-Na primeira vez, o Pitchlens também cria um atalho **Pitchlens** na Área de Trabalho e no Menu Iniciar.
+Na primeira vez, o Pitchlens também cria um atalho **Pitchlens** na Área de Trabalho e no Menu Iniciar. Quando sair
+versão nova, aparece um botão verde **Nova versão** no topo (o Pitchlens só consulta a página pública de releases do
+GitHub; nada é baixado ou instalado sozinho).
 
 > **"O Windows protegeu o computador"?** O Pitchlens.exe é pequeno e não tem assinatura digital (o código está
 > em [`launcher/`](launcher/Pitchlens.cs) e dá para recompilar com `launcher\build.bat`). Clique em

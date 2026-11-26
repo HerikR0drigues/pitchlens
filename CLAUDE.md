@@ -27,6 +27,12 @@ esse arquivo atualizado quando mapear algo novo.
   por causa da EULA do FM e dos direitos das fotos.
 - Nada de janela de console: tudo que o app abre usa `CREATE_NO_WINDOW` ou roda dentro do `Pitchlens.exe`.
 
+## Testes e release
+- `py -I -m unittest discover -s tests -v` e `node --test tests/web.test.js` (CI em `.github/workflows/tests.yml`).
+- Versão em `scout.__version__`. Release: `git archive` (respeita `.gitattributes export-ignore`) →
+  `Pitchlens-x.y.z.zip` com a pasta `Pitchlens/`, depois `gh release create vX.Y.Z`. O app avisa versão nova via
+  `/api/update` (API pública de releases do GitHub).
+
 ## Dicas de ambiente
 - Python 3.14 via `py`. Com `py -I`, a pasta atual sai do `sys.path` (usar `sys.path.insert(0, '.')`) e
   `PYTHONIOENCODING` é ignorado (usar `sys.stdout.reconfigure`).

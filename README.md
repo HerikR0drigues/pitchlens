@@ -10,6 +10,8 @@ lists, expiring contracts, CA/PA, positions, preferred foot and full attributes 
 
 [Português](README.pt-BR.md) · [Technical notes](docs/TECHNICAL.md) · [Brand](docs/brand/README.md)
 
+[![Download](https://img.shields.io/github/v/release/HerikR0drigues/pitchlens?label=download)](https://github.com/HerikR0drigues/pitchlens/releases/latest)
+[![Tests](https://github.com/HerikR0drigues/pitchlens/actions/workflows/tests.yml/badge.svg)](https://github.com/HerikR0drigues/pitchlens/actions/workflows/tests.yml)
 ![Windows](https://img.shields.io/badge/platform-Windows-0078D6)
 ![Python](https://img.shields.io/badge/python-3.10%2B-3776AB)
 ![Dependencies](https://img.shields.io/badge/dependencies-none-success)
@@ -33,6 +35,10 @@ open source and with **zero dependencies**: just Python and your browser.
 
 | | |
 |---|---|
+| ⚖️ **Compare players** | Put up to 3 players side by side — ratings, roles, wage, contract and every attribute, best value highlighted |
+| 🟩 **Best XI** | Pick a club (or your shortlist) and a formation: the strongest line-up, backups and the weakest spots, with a *Find better* search for each |
+| 📈 **Progress tracking** | CA/PA of your shortlisted and recently viewed players is recorded on every read, with a chart on the profile |
+| ✎ **Notes** | Write notes on any player; they are searchable |
 | 🧭 **Role ratings** | A 0–100 rating for 24 roles (winger, ball-playing defender, poacher…), best role for every player, filter and sort by role |
 | 👯 **Similar players** | On every profile: the players with the closest attribute profile, with age, club and wage |
 | 💰 **Wage, release clause, squad status** | In the table and on the profile, in £, €, $ or R$, per week or per month |
@@ -61,14 +67,17 @@ open source and with **zero dependencies**: just Python and your browser.
 
 ## Getting started
 
-1. Download this repository (**Code → Download ZIP**) and extract the whole folder, or `git clone` it.
+1. Download **`Pitchlens-x.y.z.zip`** from the [latest release](https://github.com/HerikR0drigues/pitchlens/releases/latest) and extract the whole folder.
+   (Or **Code → Download ZIP** / `git clone` for the development version.)
 2. Open Football Manager 27 and **load your save**.
 3. Double-click **`Pitchlens.exe`**.
 4. Pitchlens opens in its own window, like any desktop app (no console, no browser).
    The first read of your save takes 15–35 seconds.
 5. Click **Refresh from game** whenever you want fresh data. Closing the window closes Pitchlens.
 
-On the first run Pitchlens also creates a **Pitchlens** shortcut on your Desktop and in the Start Menu.
+On the first run Pitchlens also creates a **Pitchlens** shortcut on your Desktop and in the Start Menu. When a new
+version is out, a green **New version** button appears in the top bar (Pitchlens only asks GitHub's public releases
+page; nothing is downloaded or installed by itself).
 
 > **"Windows protected your PC"?** Pitchlens.exe is small and not code-signed (its source is in
 > [`launcher/`](launcher/Pitchlens.cs), and you can rebuild it with `launcher\build.bat`). Click

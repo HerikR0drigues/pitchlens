@@ -1,0 +1,8 @@
+# Left out of the release zip (git archive): development-only files
+tests export-ignore
+.github export-ignore
+tools export-ignore
+launcher export-ignore
+.gitattributes export-ignore
+.gitignore export-ignore
+CLAUDE.md export-ignore

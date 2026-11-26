@@ -25,7 +25,8 @@ sys.path.insert(0, str(ROOT))
 import faces  # noqa: E402
 import fmreader  # noqa: E402
 
-__version__ = '1.0.0'
+__version__ = '1.1.0'
+REPO = 'HerikR0drigues/pitchlens'
 HOST, PORT = '127.0.0.1', 8770
 WEB = ROOT / 'web'
 TYPES = {'.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
@@ -67,7 +68,7 @@ def list_payload() -> dict:
     # attributes go as one compact string per player (chr(48 + value)) for role ratings and similar players
     data = [[p[k] for k in LIST_FIELDS] + [faces.has(p['uid']), ''.join(chr(48 + v) for v in p['attrs'])]
             for p in _state['players']]
-    return {'fields': LIST_FIELDS + ('photo', 'a'), 'rows': data, 'meta': _state['meta'], 'error': _state['error'],
+    return {'fields': LIST_FIELDS + ('photo', 'a'), 'groups': fmreader.GROUP_INDEX, 'rows': data, 'meta': _state['meta'], 'error': _state['error'],
             'error_code': _state['error_code'], 'version': __version__}
 
 
@@ -77,6 +78,30 @@ def player_payload(uid: int) -> dict:
         return {'error': 'Player not found (refresh the data).', 'error_code': 'player_not_found'}
     return {**{k: p[k] for k in LIST_FIELDS}, 'contract_day': p['contract_day'], 'pre_day': p['pre_day'], 'birth_day': p['birth_day'],
             'photo': faces.has(uid), 'attrs': p['attrs'], 'groups': fmreader.GROUP_INDEX}
+
+
+_update: dict = {}
+
+
+def _ver(s: str) -> tuple:
+    return tuple(int(x) for x in s.lstrip('vV').split('.')[:3] if x.isdigit())
+
+
+def update_info() -> dict:
+    """Ask GitHub once per run whether a newer release exists (only the public releases API; nothing is sent)."""
+    if not _update:
+        info = {'current': __version__, 'latest': None, 'newer': False, 'url': None}
+        try:
+            req = urllib.request.Request(f'https://api.github.com/repos/{REPO}/releases/latest',
+                                         headers={'User-Agent': 'Pitchlens', 'Accept': 'application/vnd.github+json'})
+            with urllib.request.urlopen(req, timeout=4) as r:
+                rel = json.load(r)
+            info.update(latest=rel.get('tag_name'), url=rel.get('html_url'),
+                        newer=_ver(rel.get('tag_name') or '0') > _ver(__version__))
+        except Exception:  # noqa: BLE001 - offline or rate limited: just say nothing
+            pass
+        _update.update(info)
+    return _update
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -116,6 +141,8 @@ class Handler(BaseHTTPRequestHandler):
             except ValueError:
                 uid = 0
             return self._json(player_payload(uid))
+        if url.path == '/api/update':
+            return self._json(update_info())
         if url.path == '/api/face':
             try:
                 f = faces.path(int(parse_qs(url.query).get('uid', ['0'])[0]))
