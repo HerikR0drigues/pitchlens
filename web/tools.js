@@ -83,6 +83,8 @@ const FORMATIONS = {
   '3-5-2': [[0, 'gk'], [3, 'cd'], [3, 'bpd'], [3, 'cd'], [14, 'wb'], [5, 'dm'], [7, 'b2b'], [7, 'ap'], [13, 'wb'], [12, 'af'], [12, 'pf']],
   '5-3-2': [[0, 'gk'], [14, 'wb'], [3, 'cd'], [3, 'bpd'], [3, 'cd'], [13, 'wb'], [7, 'b2b'], [5, 'dlp'], [7, 'mez'], [12, 'af'], [12, 'tf']],
 };
+// vertical position (%) of each line on the best-XI pitch, spaced so cards never overlap
+const XI_Y = {0: 91, 1: 84, 2: 70, 3: 76, 4: 70, 5: 59, 6: 44, 7: 44, 8: 44, 9: 27, 10: 28, 11: 27, 12: 10, 13: 58, 14: 58};
 const posFit = f => f >= 18 ? 1 : f >= 15 ? .95 : f >= 10 ? .85 : .7;
 const slotRating = (p, role, pos) => Math.round(roleRaw(p, ROLE_BY_ID[role]) * posFit(p.pos[pos] || 1));
 
@@ -99,7 +101,7 @@ function slotXY(slots) {
   const byPos = {}; slots.forEach(([pos], i) => (byPos[pos] = byPos[pos] || []).push(i));
   const xy = []; const spread = {1: [50], 2: [36, 64], 3: [24, 50, 76]};
   Object.entries(byPos).forEach(([pos, idx]) => idx.forEach((s, k) => {
-    const [x, y] = PXY[pos]; xy[s] = [idx.length > 1 ? spread[idx.length][k] : x, 6 + y * .84];
+    const [x] = PXY[pos]; xy[s] = [idx.length > 1 ? spread[idx.length][k] : x, XI_Y[pos]];
   }));
   return xy;
 }
@@ -143,8 +145,8 @@ function renderXI(club, form) {
     if (!x) return '';
     const [p, v] = x;
     return `<div class="xis ${weak.includes(s) ? 'weak' : ''}" style="left:${xy[s][0]}%;top:${xy[s][1]}%">
-      <button data-uid="${p.uid}">${avatar(p)}<span class="xn">${esc(p.name.split(' ').slice(-1)[0])}</span></button>
-      <span class="xr" style="color:${tone(v, 100)}">${v}</span><span class="xrole">${esc(posName(pos))} · ${esc(roleName(role))}</span>
+      <button data-uid="${p.uid}">${avatar(p)}<span class="xn">${esc(p.name.split(' ').slice(-1)[0])} <b class="xr" style="color:${tone(v, 100)}">${v}</b></span></button>
+      <span class="xrole">${esc(posName(pos))} · ${esc(roleName(role))}</span>
       ${b ? `<span class="xb" title="${esc(t('xiBackup'))}">↳ ${esc(b[0].name.split(' ').slice(-1)[0])} ${b[1]}</span>` : ''}</div>`;
   };
   return `<div class="xi">

@@ -339,6 +339,12 @@ async function load(path, tries = 0) {
     setStatus();
     apply();
     const pid = +URLP.get('p'); if (pid && ALL.length && !$('#drawer').classList.contains('on')) openPlayer(pid);
+    // deep links: ?xi=<club>&form=4-3-3 opens the best XI, ?cmp=uid,uid[,uid] opens the comparison (first load only)
+    if (ALL.length && !load.linked) {
+      load.linked = true;
+      if (URLP.get('cmp')) { CMP = URLP.get('cmp').split(',').map(Number).filter(u => BY_UID.has(u)).slice(0, CMP_MAX); store('cmp', CMP); renderCmpBar(); if (CMP.length > 1) openCompare(); }
+      if (URLP.get('xi')) { store('xi', {club: URLP.get('xi'), form: URLP.get('form') || '4-3-3'}); openBestXI(); }
+    }
   } catch {
     // the first read of a big save can outlast the connection; the server keeps the result, so just ask again
     if (tries < 4) { await new Promise(r => setTimeout(r, 1500)); return load('/api/players', tries + 1); }
@@ -414,7 +420,7 @@ document.addEventListener('keydown', e => {
   if (e.key === '/' && !['INPUT', 'SELECT'].includes(document.activeElement.tagName)) { e.preventDefault(); $('#q').focus(); }
 });
 
-// ---------- boot (URL params win: ?lang=en|pt&theme=dark|light&sit=<situation>&q=<search>&role=<role id>&photos=0&p=<uid>)
+// ---------- boot (URL params win: ?lang=en|pt&theme=dark|light&sit=<situation>&q=<search>&role=<role id>&photos=0&p=<uid>&xi=<club>&form=<formation>&cmp=<uid,uid>)
 if (URLP.get('lang')) F.lang = URLP.get('lang') === 'pt' ? 'pt' : 'en';
 if (!F.lang) F.lang = (navigator.language || 'en').toLowerCase().startsWith('pt') ? 'pt' : 'en';
 if (SIT.some(s => s[0] === URLP.get('sit'))) F.sit = URLP.get('sit');

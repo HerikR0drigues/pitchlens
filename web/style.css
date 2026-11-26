@@ -248,12 +248,13 @@ tbody tr:hover .av{transform:scale(1.12);box-shadow:0 0 0 2px var(--accent),0 4p
 .xictl{display:flex;gap:10px;align-items:center;flex:1}
 .xictl input{height:30px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--text);padding:0 10px;min-width:220px}
 .xi{display:grid;grid-template-columns:1fr 320px;gap:16px;padding:16px 18px 20px}
-.xipitch{position:relative;aspect-ratio:68/80;height:min(760px,calc(100vh - 150px));max-width:100%;border-radius:14px;background:var(--pitch);border:1px solid var(--pline);overflow:hidden;margin:0 auto}
+.xipitch{position:relative;aspect-ratio:68/80;height:min(740px,calc(100vh - 250px));max-width:100%;justify-self:center;border-radius:14px;background:var(--pitch);border:1px solid var(--pline);overflow:hidden;margin:0 auto}
 .xipitch svg.lines{position:absolute;inset:0;width:100%;height:100%}
-.xis{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:1px;width:118px;text-align:center;animation:fadeUp .35s var(--ease) both}
-.xis button{display:flex;flex-direction:column;align-items:center;gap:3px;border:0;background:none;color:var(--text)}
-.xis .av{width:40px;height:40px;font-size:13px}.xis .xn{font-weight:700;font-size:12px;text-shadow:0 1px 3px #0008}
-.xis .xr{font:800 12px var(--mono);background:var(--card);border-radius:6px;padding:0 6px}
+.xis{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:1px;width:118px;text-align:center;animation:xiIn .35s var(--ease) both}
+@keyframes xiIn{from{opacity:0;transform:translate(-50%,-40%)}to{opacity:1;transform:translate(-50%,-50%)}}
+.xis button{display:flex;flex-direction:column;align-items:center;gap:2px;border:0;background:none;color:var(--text)}
+.xis .av{width:34px;height:34px;font-size:11.5px}.xis .xn{font-weight:700;font-size:12px;text-shadow:0 1px 3px #0008}
+.xis .xr{font:800 11px var(--mono);background:var(--card);border-radius:5px;padding:0 4px;text-shadow:none}
 .xis .xrole,.xis .xb{font-size:10px;color:var(--muted);text-shadow:0 1px 2px #0006}
 .xis.weak .av{box-shadow:0 0 0 2px #ef4444,0 2px 8px #0006}
 .xiside{display:grid;gap:12px;align-content:start}
