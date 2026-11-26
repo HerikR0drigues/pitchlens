@@ -16,14 +16,27 @@ const RADAR = {
           ['ax_mental',[53,18,52,20]],['ax_physical',[46,36,50]]],
 };
 const DEF = {q:'',sit:'free',nat:'',sex:'M',foot:'',pos:[],posMin:15,ca:[0,200],pa:[0,200],gap:[0,120],age:[15,40],
-             year:null,sort:'ca',dir:-1,theme:null,lang:null};
+             year:null,sort:'ca',dir:-1,theme:null,lang:null,role:'',list:'',cur:null,per:null};
+// ready-made lists: filter overrides + an extra rule
+const LISTS = {
+  prospects: {sit: 'all', age: [15, 21], pa: [140, 200], ca: [0, 200], gap: [0, 120], sort: 'pa', dir: -1},
+  freeBest: {sit: 'free', age: [18, 33], ca: [0, 200], pa: [0, 200], gap: [0, 120], sort: 'ca', dir: -1},
+  bargains: {sit: 'all', age: [18, 29], ca: [0, 200], pa: [0, 200], gap: [0, 120], sort: 'bargain', dir: -1},
+  release: {sit: 'all', age: [15, 40], ca: [0, 200], pa: [0, 200], gap: [0, 120], sort: 'ca', dir: -1},
+};
+const LIST_RULE = {bargains: p => !p.free && p.wage > 0, release: p => p.release > 0};
+// money is stored in GBP; rates are approximate (BRL matches FM27's own rate)
+const CUR = {GBP: ['£', 1], EUR: ['€', 1.17], USD: ['$', 1.27], BRL: ['R$', 6.951]};
+const SQUAD = {1: 'sq_star', 2: 'sq_important', 3: 'sq_regular', 4: 'sq_squad', 7: 'sq_fringe'};
+const NOPHOTO = new URLSearchParams(location.search).get('photos') === '0';
 
 let F = Object.assign({}, DEF, store('filters') || {});
 if (!Array.isArray(F.pos) || F.pos.some(p => typeof p !== 'number')) F.pos = [];
 if (![18,15,10].includes(+F.posMin)) F.posMin = 15;
 if (!['','L','R','B'].includes(F.foot)) F.foot = '';
 let FAV = new Set(store('fav') || []);
-let ALL = [], VIEW = [], BASE = [], META = null, shown = 0, lastErr = null;
+let ALL = [], VIEW = [], BASE = [], META = null, shown = 0, lastErr = null, BY_UID = new Map();
+if (!ROLE_BY_ID[F.role]) F.role = ''; if (!LISTS[F.list]) F.list = '';
 const PAGE = 200;
 
 // ---------- helpers
@@ -38,10 +51,22 @@ const attrName = i => ATTR_NAMES[LANG()][i];
 const gameYear = () => +F.year || META?.game_year || new Date().getFullYear();
 function tone(v, max = 200) { const r = v / max; return r >= .75 ? '#22c55e' : r >= .6 ? '#84cc16' : r >= .5 ? '#eab308' : r >= .4 ? '#f97316' : '#ef4444'; }
 const tone20 = v => tone(v, 20);
+const curCode = () => CUR[F.cur] ? F.cur : (LANG() === 'pt' ? 'BRL' : 'GBP');
+const perMonth = () => F.per ? F.per === 'm' : curCode() === 'BRL';
+function money(gbp) {
+  if (!gbp) return '—';
+  const [sym, rate] = CUR[curCode()], v = gbp * rate, pt = LANG() === 'pt';
+  const f = (n, d) => n.toLocaleString(pt ? 'pt-BR' : 'en-US', {maximumFractionDigits: d});
+  const txt = v >= 1e6 ? f(v / 1e6, v >= 1e7 ? 1 : 2) + (pt ? ' mi' : 'M') : v >= 1e3 ? f(v / 1e3, v >= 1e5 ? 0 : 1) + (pt ? ' mil' : 'K') : f(v, 0);
+  return sym + ' ' + txt;
+}
+const wageOf = p => p.wage ? (perMonth() ? p.wage * 52 / 12 : p.wage) : 0;
+const wageTxt = p => p.wage ? money(wageOf(p)) + (perMonth() ? t('perMonth') : t('perWeek')) : '—';
+const rating100 = v => { const c = tone(v, 100); return `<span class="rating" style="background:${c}1f;color:${c}">${v ?? '—'}</span>`; };
 const rating = v => { const c = tone(v); return `<span class="rating" style="background:${c}1f;color:${c}">${v}</span>`; };
 function initials(n) { const w = String(n).split(/\s+/).filter(Boolean); return ((w[0] || '?')[0] + (w.length > 1 ? w[w.length - 1][0] : '')).toUpperCase(); }
 function avatar(p) {
-  const h = (p.uid * 47) % 360, img = p.photo ? `<img src="/api/face?uid=${p.uid}" alt="" loading="lazy" decoding="async" onload="faceOk(this)" onerror="faceFail(this)">` : '';
+  const h = (p.uid * 47) % 360, img = p.photo && !NOPHOTO ? `<img src="/api/face?uid=${p.uid}" alt="" loading="lazy" decoding="async" onload="faceOk(this)" onerror="faceFail(this)">` : '';
   return `<div class="av" style="--h1:hsl(${h} 58% 46%);--h2:hsl(${(h + 40) % 360} 62% 36%)"><span>${esc(initials(p.name))}</span>${img}</div>`;
 }
 function faceOk(img) { img.parentNode.classList.add('ph'); }
@@ -68,6 +93,12 @@ function applyLang() {
   $$('[data-i18n-title]').forEach(el => el.title = t(el.dataset.i18nTitle));
   $('#lang').textContent = LANG() === 'pt' ? 'PT' : 'EN';
   buildSit(); buildPitch();
+  $('#role').innerHTML = `<option value="">${esc(t('anyRole'))}</option>` + ROLES.map(r => `<option value="${r.id}">${esc(roleName(r.id))}</option>`).join('');
+  $('#lists').innerHTML = Object.keys(LISTS).map(k => `<button data-v="${k}">${esc(t('list_' + k))}</button>`).join('');
+  $$('#lists button').forEach(b => b.onclick = () => {
+    const k = b.dataset.v; if (F.list === k) { F.list = ''; } else { Object.assign(F, LISTS[k], {list: k}); }
+    if (F.sort === 'role' && !F.role) F.sort = 'ca'; sync(); apply();
+  });
   RANGES.forEach(([id, k, l, mn, mx]) => dual($('#' + id), k, t(l), mn, mx));
 }
 function applyTheme() {
@@ -116,7 +147,7 @@ function buildPitch() {
 
 // ---------- filtering
 function apply() {
-  const q = norm(F.q), ano = gameYear(), pm = +F.posMin;
+  const q = norm(F.q), ano = gameYear(), pm = +F.posMin, role = ROLE_BY_ID[F.role], rule = LIST_RULE[F.list];
   const cnt = {free:0, ending:0, transfer:0, loan:0, pre:0, fav:0, all:0};
   VIEW = []; BASE = [];
   const sitOk = p => F.sit === 'all' || (F.sit === 'free' && p.free) || (F.sit === 'ending' && !p.free && p.contract_year === ano)
@@ -131,6 +162,10 @@ function apply() {
     if ((F.sex === 'M' && p.female) || (F.sex === 'F' && !p.female)) continue;
     if (F.foot && p.foot !== F.foot && !(p.foot === 'B' && F.foot !== 'B')) continue;
     if (F.pos.length && !F.pos.some(i => p.pos[i] >= pm)) continue;
+    if (role && !role.pos.some(i => p.pos[i] >= pm)) continue;
+    if (rule && !rule(p)) continue;
+    if (role) p.role = roleRating(p, role);
+    p.bargain = p.ca - 22 * Math.log10(Math.max(p.wage || 0, 50));
     p.gap = p.pa - p.ca; p.age = p.birth_year ? ano - p.birth_year : 0;
     const inR = p.ca >= F.ca[0] && p.ca <= F.ca[1] && p.pa >= F.pa[0] && p.pa <= F.pa[1] && p.gap >= F.gap[0]
       && (p.gap <= F.gap[1] || F.gap[1] === 120) && p.age >= F.age[0] && p.age <= F.age[1];
@@ -155,7 +190,7 @@ function apply() {
   shown = PAGE; render(); kpis(); countFilters(); store('filters', F);
 }
 function countFilters() {
-  let n = 0; if (F.sit !== 'all') n++; if (F.nat) n++; if (F.sex) n++; if (F.foot) n++; if (F.pos.length) n++; if (F.q) n++;
+  let n = 0; if (F.role) n++; if (F.list) n++; if (F.sit !== 'all') n++; if (F.nat) n++; if (F.sex) n++; if (F.foot) n++; if (F.pos.length) n++; if (F.q) n++;
   RANGES.forEach(([, k, , mn, mx]) => { if (F[k][0] !== mn || F[k][1] !== mx) n++; });
   $('#fcount').textContent = n;
 }
@@ -177,10 +212,12 @@ function render() {
     const nat = natural(p).slice(0, 3);
     return `<tr data-uid="${p.uid}"><td><button class="star ${FAV.has(p.uid) ? 'on' : ''}" data-fav="${p.uid}" title="${esc(t(FAV.has(p.uid) ? 'removeFav' : 'addFav'))}">${STAR}</button></td>
     <td><div class="pl">${avatar(p)}<div><div class="nm">${esc(p.name)}</div><div class="sub">${p.female ? esc(t('female_tag')) + ' · ' : ''}${esc(p.nation_code || '')}${p.nation_code ? ' · ' : ''}ID ${p.uid}</div></div></div></td>
-    <td><div class="poss">${footTag(p)}${nat.map(([v, i]) => `<span class="pt ${v >= 18 ? 'n' : ''}">${posName(i)}</span>`).join('') || '<span class="sub">—</span>'}</div></td>
+    <td><div class="poss">${footTag(p)}${nat.map(([v, i]) => `<span class="pt ${v >= 18 ? 'n' : ''}">${posName(i)}</span>`).join('') || '<span class="sub">—</span>'}</div><div class="brole">${p.a ? esc(roleName(bestRole(p))) + ' · ' + p._bestR : ''}</div></td>
+    ${F.role ? `<td class="r">${rating100(p.role)}</td>` : ''}
     <td class="r">${p.age || '—'}</td><td class="r">${rating(p.ca)}</td><td class="r">${rating(p.pa)}</td>
     <td class="r gap" style="color:${p.gap >= 25 ? '#22c55e' : p.gap >= 10 ? 'var(--text)' : 'var(--faint)'}">${p.gap > 0 ? '+' : ''}${p.gap}</td>
     <td>${esc(p.nation)}<span class="flag">${esc(p.nation_code)}</span></td>
+    <td class="r wage">${p.wage ? money(wageOf(p)) : '<span class="sub">—</span>'}</td>
     <td><div class="ct">${p.free ? `<span class="tag free">${esc(t('free'))}</span>` : `<span class="cn">${esc(p.club || '—')}</span><span class="cy">${p.contract_year}</span>`}${listTags(p)}</div></td></tr>`;
   }).join('');
   const empty = $('#empty');
@@ -203,6 +240,9 @@ async function openPlayer(uid) {
   $$('tr.sel').forEach(r => r.classList.remove('sel')); $(`tr[data-uid="${uid}"]`)?.classList.add('sel');
   let p; try { p = await (await fetch('/api/player?uid=' + uid)).json(); } catch { return toast(t('err_offline')); }
   if (p.error) return toast(t('err_' + p.error_code) || p.error);
+  const lp = BY_UID.get(p.uid) || p;
+  const roles = lp.a ? topRoles(lp) : [], sim = lp.a ? similarPlayers(lp, ALL) : [];
+  const sq = SQUAD[p.squad] ? t(SQUAD[p.squad]) : '';
   const age = p.birth_year ? gameYear() - p.birth_year : '—', nat = natural(p), isGK = p.pos[0] >= 15, A = p.attrs;
   const avg = a => Math.round(a.reduce((s, i) => s + A[i], 0) / a.length * 10) / 10;
   const ax = (isGK ? RADAR.gk : RADAR.field).map(([k, idx]) => [t(k), avg(idx)]);
@@ -221,6 +261,16 @@ async function openPlayer(uid) {
       <div><div class="k">${esc(t('margin'))}</div><div class="v">${p.pa - p.ca > 0 ? '+' : ''}${p.pa - p.ca}</div></div>
       <div><div class="k">${esc(t('contract'))}</div><div class="v" style="font-size:13px">${p.free ? `<span class="tag free">${esc(t('free'))}</span>` : esc(p.club) + `<div class="sub">${esc(t('until'))} ${p.contract_year}</div>`}${listTags(p)}${p.pre_club ? `<div class="sub">${esc(t('preTitle', {c: p.pre_club, d: preDate(p)}))}</div>` : ''}</div></div>
     </div></div>
+    ${p.free ? '' : `<div class="card"><div class="stat">
+      <div><div class="k">${esc(t('wage'))}</div><div class="v sm">${esc(wageTxt(p))}</div></div>
+      <div><div class="k">${esc(t('releaseClause'))}</div><div class="v sm">${esc(p.release ? money(p.release) : t('none'))}</div></div>
+      <div><div class="k">${esc(t('squadStatus'))}</div><div class="v sm">${esc(sq || '—')}</div></div>
+      <div><div class="k">${esc(t('contractEnds'))}</div><div class="v sm">${p.contract_year || '—'}</div></div>
+    </div></div>`}
+    ${roles.length ? `<div class="grid2">
+      <div class="card"><h4>${esc(t('bestRoles'))}</h4>${roles.map(([id, v, raw]) => `<div class="rbar" title="${esc(t('roleRawTip', {n: raw}))}"><span>${esc(roleName(id))}</span><i><b style="width:${v}%;background:${tone(v, 100)}"></b></i><em style="color:${tone(v, 100)}">${v}</em></div>`).join('')}<div class="sub" style="margin-top:8px">${esc(t('roleNote'))}</div></div>
+      <div class="card"><h4>${esc(t('similar'))}</h4>${sim.map(([o, s]) => `<button class="simrow" data-uid="${o.uid}">${avatar(o)}<span class="nm">${esc(o.name)}<span class="sub">${o.birth_year ? gameYear() - o.birth_year : '—'} · ${esc(o.club || t('free'))}${o.wage ? ' · ' + esc(money(wageOf(o))) : ''}</span></span><span class="r">${rating(o.ca)}<em>${s}%</em></span></button>`).join('') || '<div class="sub">—</div>'}</div>
+    </div>` : ''}
     <div class="grid2">
       <div class="card"><h4>${esc(t('profile'))}</h4>${radar(ax)}</div>
       <div class="card"><h4>${esc(t('positions'))}</h4>${bigPitch(p.pos)}
@@ -231,6 +281,7 @@ async function openPlayer(uid) {
     <div class="note">ⓘ ${esc(t('attrNote'))}</div>
    </div>`;
   $('#dclose').onclick = closeDrawer;
+  $$('#drawer .simrow').forEach(b => b.onclick = () => openPlayer(+b.dataset.uid));
   $('#dfav').onclick = () => toggleFav(p.uid);
   $('#dlink').onclick = () => { const u = new URL(location.href); u.searchParams.set('p', p.uid); navigator.clipboard?.writeText(u.href); toast(t('linkCopied')); };
   $('#drawer').classList.add('on'); $('#shade').classList.add('on');
@@ -267,6 +318,7 @@ async function load(path, tries = 0) {
       META = r.meta;
       const c = r.fields;
       ALL = r.rows.map(row => { const o = {}; c.forEach((k, i) => o[k] = row[i]); o._n = norm(o.name); o._c = norm(o.club); return o; });
+      BY_UID = new Map(ALL.map(p => [p.uid, p]));
       fillNations();
     }
     setStatus();
@@ -306,12 +358,19 @@ function sync() {
   $$('#foot button').forEach(b => b.classList.toggle('on', b.dataset.v === (F.foot || '')));
   $$('#posMin button').forEach(b => b.classList.toggle('on', +b.dataset.v === +F.posMin));
   $$('#natQuick button').forEach(b => b.classList.toggle('on', b.dataset.v === F.nat));
+  $('#role').value = F.role; $('#cur').value = curCode();
+  $$('#per button').forEach(b => b.classList.toggle('on', b.dataset.v === (perMonth() ? 'm' : 'w')));
+  $$('#lists button').forEach(b => b.classList.toggle('on', b.dataset.v === F.list));
+  document.body.classList.toggle('hasrole', !!F.role);
   $$('#pitch .pc').forEach(b => b.classList.toggle('on', F.pos.includes(+b.dataset.p)));
   RANGES.forEach(([id]) => $('#' + id)._paint && $('#' + id)._paint());
 }
 $('#q').oninput = e => { F.q = e.target.value; debounced(); };
 $('#yearInput').oninput = e => { F.year = +e.target.value || null; $('#yearHint').textContent = ''; debounced(); };
 $('#nat').onchange = e => { F.nat = e.target.value; sync(); apply(); };
+$('#role').onchange = e => { F.role = e.target.value; if (F.role) { F.sort = 'role'; F.dir = -1; } else if (F.sort === 'role') F.sort = 'ca'; sync(); apply(); };
+$('#cur').onchange = e => { F.cur = e.target.value; F.per = null; sync(); apply(); };
+$$('#per button').forEach(b => b.onclick = () => { F.per = b.dataset.v; sync(); apply(); });
 $$('#sex button').forEach(b => b.onclick = () => { F.sex = b.dataset.v; sync(); apply(); });
 $$('#foot button').forEach(b => b.onclick = () => { F.foot = b.dataset.v; sync(); apply(); });
 $$('#posMin button').forEach(b => b.onclick = () => { F.posMin = +b.dataset.v; sync(); apply(); });
@@ -323,13 +382,14 @@ $('#rows').onclick = e => {
 $('#more').onclick = () => { shown += PAGE; render(); };
 $('#tblWrap').onscroll = e => { const el = e.target; if (el.scrollTop + el.clientHeight > el.scrollHeight - 300 && VIEW.length > shown) { shown += PAGE; render(); } };
 $('#refresh').onclick = () => load('/api/refresh');
-$('#reset').onclick = () => { F = Object.assign({}, DEF, {theme: F.theme, lang: F.lang, pos: []}); sync(); setStatus(); apply(); };
+$('#reset').onclick = () => { F = Object.assign({}, DEF, {theme: F.theme, lang: F.lang, cur: F.cur, per: F.per, pos: []}); sync(); setStatus(); apply(); };
 $('#posClear').onclick = () => { F.pos = []; sync(); apply(); };
 $('#theme').onclick = () => { F.theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'; applyTheme(); RANGES.forEach(([id]) => drawHist($('#' + id))); store('filters', F); };
 $('#lang').onclick = () => { F.lang = LANG() === 'pt' ? 'en' : 'pt'; applyLang(); if (ALL.length) fillNations(); sync(); setStatus(); apply(); };
 $('#shade').onclick = closeDrawer;
 $('#csv').onclick = () => {
-  const cols = ['name', 'age', 'ca', 'pa', 'gap', 'nation', 'club', 'contract_year', 'free', 'transfer_listed', 'loan_listed', 'pre_club', 'foot', 'uid'];
+  // basic data only: the FM EULA does not allow exporting ratings/attributes in bulk
+  const cols = ['name', 'age', 'nation', 'club', 'contract_year', 'free', 'transfer_listed', 'loan_listed', 'pre_club', 'uid'];
   const lines = [cols.join(';'), ...VIEW.map(p => cols.map(c => `"${String(p[c] ?? '').replace(/"/g, '""')}"`).join(';'))];
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + lines.join('\n')], {type: 'text/csv;charset=utf-8'})); a.download = 'pitchlens.csv'; a.click();
 };
@@ -338,11 +398,12 @@ document.addEventListener('keydown', e => {
   if (e.key === '/' && !['INPUT', 'SELECT'].includes(document.activeElement.tagName)) { e.preventDefault(); $('#q').focus(); }
 });
 
-// ---------- boot (URL params win: ?lang=en|pt&theme=dark|light&sit=<situation>&q=<search>&p=<uid>)
+// ---------- boot (URL params win: ?lang=en|pt&theme=dark|light&sit=<situation>&q=<search>&role=<role id>&photos=0&p=<uid>)
 if (URLP.get('lang')) F.lang = URLP.get('lang') === 'pt' ? 'pt' : 'en';
 if (!F.lang) F.lang = (navigator.language || 'en').toLowerCase().startsWith('pt') ? 'pt' : 'en';
 if (SIT.some(s => s[0] === URLP.get('sit'))) F.sit = URLP.get('sit');
 if (URLP.has('q')) F.q = URLP.get('q');
+if (ROLE_BY_ID[URLP.get('role')]) { F.role = URLP.get('role'); F.sort = 'role'; F.dir = -1; }
 if (URLP.get('theme')) F.theme = URLP.get('theme') === 'light' ? 'light' : 'dark';
 applyTheme(); applyLang(); sync(); setStatus(); render();
 load('/api/players');

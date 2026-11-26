@@ -36,7 +36,7 @@ _state: dict = {'players': [], 'by_uid': {}, 'meta': None, 'error': None, 'error
 
 LIST_FIELDS = ('uid', 'name', 'ca', 'pa', 'nation', 'nation_code', 'birth_year', 'club', 'club_uid',
                'contract_year', 'free', 'transfer_listed', 'loan_listed', 'female', 'pos', 'foot',
-               'pre_club', 'pre_year')
+               'pre_club', 'pre_year', 'wage', 'release', 'squad')
 
 
 def refresh() -> None:
@@ -64,8 +64,10 @@ def _read() -> None:
 
 def list_payload() -> dict:
     faces.wait(10)
-    data = [[p[k] for k in LIST_FIELDS] + [faces.has(p['uid'])] for p in _state['players']]
-    return {'fields': LIST_FIELDS + ('photo',), 'rows': data, 'meta': _state['meta'], 'error': _state['error'],
+    # attributes go as one compact string per player (chr(48 + value)) for role ratings and similar players
+    data = [[p[k] for k in LIST_FIELDS] + [faces.has(p['uid']), ''.join(chr(48 + v) for v in p['attrs'])]
+            for p in _state['players']]
+    return {'fields': LIST_FIELDS + ('photo', 'a'), 'rows': data, 'meta': _state['meta'], 'error': _state['error'],
             'error_code': _state['error_code'], 'version': __version__}
 
 

@@ -28,7 +28,12 @@
   <aside class="side">
     <div class="sidehead"><div><b data-i18n="filters"></b><span class="cnt" id="fcount">0</span></div><button class="link" id="reset" data-i18n="clearAll"></button></div>
 
+    <div class="blk"><div class="lbl" data-i18n="lists"></div><div class="quick lists" id="lists"></div></div>
+
     <div class="blk"><div class="lbl" data-i18n="situation"></div><div class="opts" id="sit"></div></div>
+
+    <div class="blk"><div class="lbl" data-i18n="role"></div><div class="sel"><select id="role"></select></div>
+      <div class="hint" data-i18n="roleHint"></div></div>
 
     <div class="blk"><div class="lbl" data-i18n="nationality"></div>
       <div class="sel"><select id="nat"></select></div>
@@ -55,6 +60,11 @@
 
     <div class="blk"><div class="row2"><span data-i18n="gameYear"></span><input class="mini" type="number" id="yearInput"></div>
       <div class="hint" id="yearHint"></div></div>
+
+    <div class="blk"><div class="lbl" data-i18n="currency"></div>
+      <div class="row2"><div class="sel" style="flex:1"><select id="cur"><option value="GBP">£ GBP</option><option value="EUR">€ EUR</option><option value="USD">$ USD</option><option value="BRL">R$ BRL</option></select></div></div>
+      <div class="seg" id="per" style="margin-top:8px"><button data-v="w" data-i18n="weekly"></button><button data-v="m" data-i18n="monthly"></button></div>
+      <div class="hint" data-i18n="currencyHint"></div></div>
   </aside>
 
   <main>
@@ -68,9 +78,9 @@
     <div class="tbl" id="tblWrap">
       <table><thead><tr>
         <th class="nosort" style="width:28px"></th>
-        <th data-k="name" data-i18n="th_player"></th><th data-k="pos0" data-i18n="th_pos"></th><th data-k="age" class="r" data-i18n="th_age"></th>
+        <th data-k="name" data-i18n="th_player"></th><th data-k="pos0" data-i18n="th_pos"></th><th data-k="role" class="r rolecol" data-i18n="th_role"></th><th data-k="age" class="r" data-i18n="th_age"></th>
         <th data-k="ca" class="r" data-i18n="th_ca"></th><th data-k="pa" class="r" data-i18n="th_pa"></th><th data-k="gap" class="r" data-i18n="th_gap"></th>
-        <th data-k="nation" data-i18n="th_nation"></th><th data-k="club" data-i18n="th_contract"></th></tr></thead>
+        <th data-k="nation" data-i18n="th_nation"></th><th data-k="wage" class="r" data-i18n="th_wage"></th><th data-k="club" data-i18n="th_contract"></th></tr></thead>
         <tbody id="rows"></tbody></table>
       <div class="empty" id="empty" style="display:none"></div>
       <button class="btn loadmore" id="more" style="display:none" data-i18n="loadMore"></button>
@@ -83,6 +93,7 @@
 <div class="toast" id="toast"></div>
 
 <script src="i18n.js"></script>
+<script src="roles.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

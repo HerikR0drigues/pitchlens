@@ -34,6 +34,10 @@ e **não tem dependências**: só Python e o seu navegador.
 
 | | |
 |---|---|
+| 🧭 **Nota por função** | Nota de 0 a 100 para 24 funções (ponta, zagueiro construtor, matador…), melhor função de cada jogador, filtro e ordenação por função |
+| 👯 **Jogadores parecidos** | Em cada ficha: os jogadores com atributos mais parecidos, com idade, clube e salário |
+| 💰 **Salário, multa e status no elenco** | Na tabela e na ficha, em £, €, $ ou R$, por semana ou por mês |
+| 📋 **Listas prontas** | Promessas, melhores livres, pechinchas (CA alto, salário baixo) e jogadores com multa rescisória |
 | 🤝 **Pré-contratos** | Veja quem já assinou com outro clube (`→ Clube`, com a data de início) e filtre por isso |
 | 🖼️ **Fotos dos jogadores** | Usa o facepack que você tiver instalado, sozinho (iniciais quando não há foto) |
 | 🔍 **Busca global** | Digitar um nome ou clube busca em todos os jogadores do save, com qualquer filtro ligado |
@@ -44,7 +48,7 @@ e **não tem dependências**: só Python e o seu navegador.
 | ⭐ **Favoritos** | Marque jogadores com estrela e filtre por eles (fica salvo no navegador) |
 | 📅 **Data do jogo** | Detectada no save, então idade e "contrato acaba neste ano" ficam sempre certos |
 | 🌗 **Tema escuro e claro** | E interface em português ou inglês (detecta sozinho, troca quando quiser) |
-| 📤 **Exportar CSV** | Exporte a lista filtrada para Excel / Planilhas Google |
+| 📤 **Exportar CSV** | Exporte a lista filtrada (nome, idade, nação, clube, contrato) para Excel / Planilhas Google |
 | 🔗 **Links diretos** | Cada jogador tem um link (`?p=<id>`) para salvar ou compartilhar |
 
 ![Ficha do jogador](docs/img/player-dark.png)

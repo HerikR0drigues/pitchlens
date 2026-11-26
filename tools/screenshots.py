@@ -2,7 +2,7 @@
 
 1. Start the scout with FM27 open and a save loaded:  py scout.py --no-browser --port 8771
 2. Run:  py tools/screenshots.py [port] [player_uid]
-Images are written to docs/img/.
+Images are written to docs/img/. Photos are turned off (?photos=0): face packs are third-party images.
 """
 import os
 import subprocess
@@ -18,9 +18,9 @@ EDGE = next(p for p in (
     Path(os.environ.get('ProgramFiles', '')) / 'Microsoft/Edge/Application/msedge.exe') if p.is_file())
 
 SHOTS = [
-    ('overview-dark.png', 'lang=en&theme=dark&sit=all'),
-    ('overview-light.png', 'lang=pt&theme=light&sit=pre'),
-    ('player-dark.png', f'lang=en&theme=dark&p={UID}'),
+    ('overview-dark.png', 'lang=en&theme=dark&sit=all&photos=0'),
+    ('overview-light.png', 'lang=pt&theme=light&sit=pre&photos=0'),
+    ('player-dark.png', f'lang=en&theme=dark&photos=0&p={UID}'),
 ]
 
 OUT.mkdir(parents=True, exist_ok=True)

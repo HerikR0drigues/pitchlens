@@ -70,7 +70,10 @@ Offsets are relative to the object start (where the vtable pointer is).
 | `+0x10` | club |
 | `+0x44` | start date (day & 0x1FF, year) — the newest start shared by 3+ contracts ≈ today's in-game date |
 | `+0x48` | end date (day, year) |
+| `+0x20` | int32 wage per week (GBP) |
+| `+0x54` | squad status: `1` star player, `2` important, `3` regular starter, `4` squad player, `7` fringe (others not mapped yet) |
 | `+0x57` | status: `0x01` transfer listed, `0x02` loan listed |
+| `+0x68`, `+0x70` | clause vector (begin, end); 8-byte entries `[int32 value][uint16 arg][uint16 type]`. Types seen: `0x08` sell-on % (arg), `0x0E` wage rise on promotion, `0x10` / `0x12` minimum fee release clause (foreign / domestic clubs), `0x20` appearance bonus, `0x26` unused-sub bonus |
 
 Contracts are found by their own vtable (`game_plugin.dll + 0x4C5DFA8`) in the same heap pass as the players. A player can
 own a second contract object that **starts in the future**: with the same club it is an agreed renewal, with another club
@@ -92,6 +95,13 @@ it is a **pre-contract** already signed (shown as `→ Club`). Placeholder recor
 ### Nation
 
 `+0x18` name, `+0x20` short name, `+0x28` three-letter code, `+0x30` adjective.
+
+## Role ratings and similar players
+
+Computed in the browser (`web/roles.js`) from the 54 attributes, which the list API sends as one compact string per
+player (`chr(48 + value)`). Role ratings are Pitchlens' own formula, not the game's: weighted average (key attributes x5,
+preferable x3, the rest of the group x1) scaled to 0-100, multiplied by position familiarity (natural 100%,
+accomplished 95%, unconvincing 85%, otherwise 70%). Similar players = smallest distance between attribute profiles.
 
 ## After a game patch
 

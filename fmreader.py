@@ -33,6 +33,10 @@ C_CLUB = 0x10           # Contract -> Club
 C_START = 0x44          # uint16 day of year (& 0x1FF), uint16 year - contract start
 C_END = 0x48            # uint16 day of year, uint16 year
 C_STATUS = 0x57         # byte: 0x01 = transfer listed, 0x02 = loan listed
+C_WAGE = 0x20           # int32 wage per week (GBP)
+C_SQUAD = 0x54          # byte: squad status (1 star player, 2 important, 3 regular starter, 4 squad player, 7 fringe...)
+C_CLAUSES = 0x68        # vector begin/end of 8-byte clauses [int32 value][uint16 arg][uint16 type]
+CLAUSE_RELEASE = (0x10, 0x12)   # minimum fee release clause (foreign clubs / domestic clubs)
 CLUB_UID = 0x0C
 CLUB_NAMES = 0x30       # -> block: +0xC0 full name, +0xC8 short name
 N_NAME, N_CODE = 0x18, 0x28
@@ -142,6 +146,9 @@ class Player:
     pre_club: str = ''   # pre-contract already signed with another club ('' = none)
     pre_year: int = 0      # pre-contract start
     pre_day: int = 0
+    wage: int = 0         # GBP per week (0 = no contract)
+    release: int = 0      # lowest minimum-fee release clause in GBP (0 = none)
+    squad: int = 0        # squad status code (see C_SQUAD)
 
 
 class FMReader:
@@ -327,14 +334,17 @@ class FMReader:
             nat, natc = self.nation(q(P_NATION))
             bday, byear = struct.unpack_from('<HH', d, o + P_BIRTH)
             con = q(P_CONTRACT)
-            cuid, cname, cday, cyear, st, club_ptr = 0, '', 0, 0, 0, 0
+            cuid, cname, cday, cyear, st, club_ptr, wage, release, squad = 0, '', 0, 0, 0, 0, 0, 0, 0
             if _is_ptr(con):
-                cd = self.read(con, 0x60)
-                if len(cd) == 0x60:
+                cd = self.read(con, 0x78)
+                if len(cd) == 0x78:
                     club_ptr = struct.unpack_from('<Q', cd, C_CLUB)[0]
                     cuid, cname = self.club(club_ptr)
                     cday, cyear = struct.unpack_from('<HH', cd, C_END)
                     st = cd[C_STATUS]
+                    wage = max(0, struct.unpack_from('<i', cd, C_WAGE)[0])
+                    squad = cd[C_SQUAD]
+                    release = self._release_clause(*struct.unpack_from('<QQ', cd, C_CLAUSES))
                     sday, syear = struct.unpack_from('<HH', cd, C_START)
                     if 1990 < syear < 2200:
                         starts[(syear, sday & 0x1FF)] += 1
@@ -343,6 +353,7 @@ class FMReader:
                               cname, cuid, cyear, cday, not _is_ptr(con), bool(st & 1), bool(st & 2),
                               bool(d[o + P_FLAGS] & 0x10),
                               list(d[o + P_POS:o + P_POS + 15]), attrs, preferred_foot(attrs)))
+            out[-1].wage, out[-1].release, out[-1].squad = wage, release, squad
             by_addr[a] = (out[-1], con, club_ptr)
         game = _game_date(starts)
         self._pre_contracts(contracts, by_addr, game)
@@ -350,6 +361,13 @@ class FMReader:
                     vtable_rva=hex(vt - self.module_base), read_at=time.strftime('%H:%M:%S'),
                     pre_contracts=sum(1 for p in out if p.pre_club), **game)
         return out, meta
+
+    def _release_clause(self, begin: int, end: int) -> int:
+        if not _is_ptr(begin) or not begin < end <= begin + 0x200 or (end - begin) % 8:
+            return 0
+        d = self.read(begin, end - begin)
+        fees = [v for v, _, kind in struct.iter_unpack('<iHH', d) if kind in CLAUSE_RELEASE and v > 0]
+        return min(fees) if fees else 0
 
     def _pre_contracts(self, contracts: list[int], by_addr: dict, game: dict) -> None:
         """A player can have a second contract object that starts in the future. When its club is not

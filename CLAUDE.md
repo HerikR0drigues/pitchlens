@@ -10,6 +10,7 @@ esse arquivo atualizado quando mapear algo novo.
   **O app nunca escreve no processo.** Constantes de offset no topo; `ATTRIBUTES`, `POSITIONS`, `GROUPS`,
   `GROUP_INDEX`, `preferred_foot()`, data do jogo estimada em `_game_date()`.
 - `faces.py` — fotos do facepack do usuário (pasta Documentos via Windows, índice uid → arquivo). Fotos nativas do FM27 ficam em bundles do Unity e não são lidas.
+- `web/roles.js` — notas por função (fórmula própria) e jogadores parecidos, calculados no navegador.
 - `scout.py` — servidor `http.server` em `127.0.0.1:8770` (cai para a próxima porta livre; se já houver um scout
   rodando, só abre o navegador). Rotas: `/`, `/api/ping`, `/api/players`, `/api/refresh`, `/api/player?uid=`, `/api/face?uid=`,
   arquivos estáticos de `web/`. Erros vêm com `error_code` (`not_running`, `no_save`, `access`, `read_error`).
@@ -22,6 +23,8 @@ esse arquivo atualizado quando mapear algo novo.
 - Commits sem `Co-Authored-By` (nem outra atribuição ao Claude).
 - Código, comentários, docstrings e mensagens das ferramentas em **inglês** (projeto público). Textos da
   interface ficam no `web/i18n.js` (EN/PT).
+- Prints públicos sem fotos de facepack (`?photos=0`) e CSV só com dados básicos (nome, idade, nação, clube, contrato),
+  por causa da EULA do FM e dos direitos das fotos.
 - Nada de janela de console: tudo que o app abre usa `CREATE_NO_WINDOW` ou roda dentro do `Pitchlens.exe`.
 
 ## Dicas de ambiente

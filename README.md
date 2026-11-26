@@ -33,6 +33,10 @@ open source and with **zero dependencies**: just Python and your browser.
 
 | | |
 |---|---|
+| 🧭 **Role ratings** | A 0–100 rating for 24 roles (winger, ball-playing defender, poacher…), best role for every player, filter and sort by role |
+| 👯 **Similar players** | On every profile: the players with the closest attribute profile, with age, club and wage |
+| 💰 **Wage, release clause, squad status** | In the table and on the profile, in £, €, $ or R$, per week or per month |
+| 📋 **Ready-made lists** | Wonderkids, best free agents, bargains (high CA, low wage) and players with a release clause |
 | 🤝 **Pre-contracts** | See who already signed for another club (`→ Club`, with the start date) and filter by it |
 | 🖼️ **Player photos** | Uses your installed face pack automatically (initials when there is no photo) |
 | 🔍 **Global search** | Typing a name or club searches every player in the save, whatever filters are on |
@@ -43,7 +47,7 @@ open source and with **zero dependencies**: just Python and your browser.
 | ⭐ **Shortlist** | Star players and filter by them; saved in your browser |
 | 📅 **In-game date** | Detected from the save, so ages and "contract ends this year" are always right |
 | 🌗 **Dark & light themes** | Plus English / Português UI (auto-detected, switch any time) |
-| 📤 **CSV export** | Export the filtered list to Excel / Google Sheets |
+| 📤 **CSV export** | Export the filtered list (name, age, nation, club, contract) to Excel / Google Sheets |
 | 🔗 **Direct links** | Every player has a link (`?p=<id>`) you can share or bookmark |
 
 ![Player profile](docs/img/player-dark.png)
