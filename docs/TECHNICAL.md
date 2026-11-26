@@ -73,7 +73,7 @@ Offsets are relative to the object start (where the vtable pointer is).
 | `+0x44` | start date (day & 0x1FF, year) — the newest start shared by 3+ contracts ≈ today's in-game date |
 | `+0x48` | end date (day, year) |
 | `+0x20` | int32 wage per week (GBP) |
-| `+0x54` | squad status: `1` star player, `2` important, `3` regular starter, `4` squad player, `7` fringe (others not mapped yet) |
+| `+0x54` | squad status: `1` star player, `2` important, `3` regular starter, `4` squad player, `5` impact sub, `7` fringe, `10` hot prospect, `11` decent young player (13, 15, 16, 20-22 seen but not identified; found by matching the in-game status menu order and the CA/PA/age profile of each code) |
 | `+0x57` | status: `0x01` transfer listed, `0x02` loan listed |
 | `+0x68`, `+0x70` | clause vector (begin, end); 8-byte entries `[int32 value][uint16 arg][uint16 type]`. Types seen: `0x08` sell-on % (arg), `0x0E` wage rise on promotion, `0x10` / `0x12` minimum fee release clause (foreign / domestic clubs), `0x20` appearance bonus, `0x26` unused-sub bonus |
 
@@ -97,6 +97,20 @@ it is a **pre-contract** already signed (shown as `→ Club`). Placeholder recor
 ### Nation
 
 `+0x18` name, `+0x20` short name, `+0x28` three-letter code, `+0x30` adjective.
+
+## Research notes (not used by the app yet)
+
+- **Players live in one big array**: consecutive player objects are 968 bytes (`0x3C8`) apart, so a player spans
+  roughly `-0x138 .. +0x290` around its vtable.
+- **Market value is not stored on the player.** No int32 inside the player object (or in the objects it points to)
+  tracks CA the way a value would; only the reputation fields (`-0x2C .. -0x28`) and the contract's loyalty bonus
+  (`contract +0xA8`) do. FM most likely computes the value on demand (the screen shows a range that depends on
+  scouting knowledge).
+- **Injuries / personality** were not found yet: several pointers are set for only 1-25% of the players
+  (e.g. `+0x150/+0x158/+0x160` looks like a vector, `+0x210` is set for ~1%), but none holds dates around the
+  game date. Mapping them needs labelled examples (players known to be injured, editor values for personality).
+- The squad-status names were matched with the in-game status menu, which lists them in code order, and checked
+  against the age/CA/PA profile of each code (10 = young, high PA; 11 = younger, lower PA).
 
 ## Role ratings and similar players
 

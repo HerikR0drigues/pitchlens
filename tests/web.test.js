@@ -49,7 +49,8 @@ test('a finisher is rated best as a poacher-type striker, not a keeper', () => {
 test('similar players are sorted by closeness and skip the player himself', () => {
   const base = mk(1, i => 10 + (i % 5), 12);
   const near = mk(2, i => 10 + (i % 5) + (i === 3 ? 1 : 0), 12), far = mk(3, () => 2, 12), gk = mk(4, i => 10 + (i % 5), 0);
-  const out = T.similarPlayers(base, [base, far, near, gk], 3);
+  const twin = Object.assign(mk(5, i => 10 + (i % 5), 12), {female: true});
+  const out = T.similarPlayers(base, [base, far, near, gk, twin], 3);
   assert.deepStrictEqual(Array.from(out, ([o]) => o.uid), [2, 3]);
   assert.ok(out[0][1] > out[1][1]);
 });

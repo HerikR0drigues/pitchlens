@@ -59,6 +59,12 @@ e **não tem dependências**: só Python e o seu navegador.
 
 ![Ficha do jogador](docs/img/player-dark.png)
 
+| Melhor XI (com os pontos fracos) | Comparar jogadores |
+|---|---|
+| ![Melhor XI](docs/img/best-xi.png) | ![Comparar](docs/img/compare.png) |
+
+![Filtro por função: pontas, ordenados pela nota](docs/img/roles-light.png)
+
 ## Requisitos
 
 - **Windows 10/11**

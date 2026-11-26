@@ -58,6 +58,12 @@ open source and with **zero dependencies**: just Python and your browser.
 
 ![Player profile](docs/img/player-dark.png)
 
+| Best XI (with the weakest spots) | Compare players |
+|---|---|
+| ![Best XI](docs/img/best-xi.png) | ![Compare](docs/img/compare.png) |
+
+![Role filter: wingers, sorted by role rating](docs/img/roles-light.png)
+
 ## Requirements
 
 - **Windows 10/11**

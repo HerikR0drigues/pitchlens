@@ -27,7 +27,7 @@ const LISTS = {
 const LIST_RULE = {bargains: p => !p.free && p.wage > 0, release: p => p.release > 0};
 // money is stored in GBP; rates are approximate (BRL matches FM27's own rate)
 const CUR = {GBP: ['£', 1], EUR: ['€', 1.17], USD: ['$', 1.27], BRL: ['R$', 6.951]};
-const SQUAD = {1: 'sq_star', 2: 'sq_important', 3: 'sq_regular', 4: 'sq_squad', 7: 'sq_fringe'};
+const SQUAD = {1: 'sq_star', 2: 'sq_important', 3: 'sq_regular', 4: 'sq_squad', 5: 'sq_impact', 7: 'sq_fringe', 10: 'sq_hot', 11: 'sq_young'};
 const NOPHOTO = new URLSearchParams(location.search).get('photos') === '0';
 
 let F = Object.assign({}, DEF, store('filters') || {});

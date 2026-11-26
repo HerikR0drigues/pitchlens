@@ -107,11 +107,11 @@ function bestRole(p) {
 }
 function topRoles(p, n = 6) { return ROLES.map(r => [r.id, roleRating(p, r), roleRaw(p, r)]).sort((a, b) => b[1] - a[1]).slice(0, n); }
 
-// similar players: distance between attribute profiles (goalkeepers compared with goalkeepers)
+// similar players: distance between attribute profiles (goalkeepers with goalkeepers, men with men, women with women)
 function similarPlayers(p, pool, n = 8) {
   const gk = (p.pos[0] || 0) >= 15, set = gk ? GK_SET : OUTFIELD_SET, A = attrsOf(p), out = [];
   for (const o of pool) {
-    if (o.uid === p.uid || ((o.pos[0] || 0) >= 15) !== gk || !o.a) continue;
+    if (o.uid === p.uid || ((o.pos[0] || 0) >= 15) !== gk || !o.a || !o.female !== !p.female) continue;
     const B = attrsOf(o); let d = 0;
     for (const i of set) { const x = A[i] - B[i]; d += x * x; }
     out.push([o, d]);

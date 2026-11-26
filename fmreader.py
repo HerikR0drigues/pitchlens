@@ -34,7 +34,7 @@ C_START = 0x44          # uint16 day of year (& 0x1FF), uint16 year - contract s
 C_END = 0x48            # uint16 day of year, uint16 year
 C_STATUS = 0x57         # byte: 0x01 = transfer listed, 0x02 = loan listed
 C_WAGE = 0x20           # int32 wage per week (GBP)
-C_SQUAD = 0x54          # byte: squad status (1 star player, 2 important, 3 regular starter, 4 squad player, 7 fringe...)
+C_SQUAD = 0x54          # byte: squad status (1 star, 2 important, 3 regular starter, 4 squad, 5 impact sub, 7 fringe, 10 hot prospect, 11 young)
 C_CLAUSES = 0x68        # vector begin/end of 8-byte clauses [int32 value][uint16 arg][uint16 type]
 CLAUSE_RELEASE = (0x10, 0x12)   # minimum fee release clause (foreign clubs / domestic clubs)
 CLUB_UID = 0x0C

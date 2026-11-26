@@ -25,7 +25,7 @@ sys.path.insert(0, str(ROOT))
 import faces  # noqa: E402
 import fmreader  # noqa: E402
 
-__version__ = '1.1.1'
+__version__ = '1.1.2'
 REPO = 'HerikR0drigues/pitchlens'
 HOST, PORT = '127.0.0.1', 8770
 WEB = ROOT / 'web'
