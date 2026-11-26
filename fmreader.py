@@ -17,6 +17,8 @@ from dataclasses import dataclass, asdict
 MODULE = 'game_plugin.dll'
 RVA_PLAYER_VTABLE = 0x4E89908          # FM27 27.0.x (Steam) - see docs/TECHNICAL.md
 RVA_CONTRACT_VTABLE = 0x4C5DFA8        # contracts (also pre-contracts / future renewals)
+RVA_LOAN_VTABLE = 0x4F2A0F8            # loan records (current loans, past loans and offers)
+L_PLAYER, L_CLUB, L_START = 0x08, 0x10, 0x4C   # loan: player, club the player is loaned to, start date (1900 = not active)
 
 P_UID = 0x0C            # uint32, repeated at +0x10
 P_FLAGS = 0x19          # flags byte: bit 0x10 = female
@@ -34,7 +36,8 @@ C_START = 0x44          # uint16 day of year (& 0x1FF), uint16 year - contract s
 C_END = 0x48            # uint16 day of year, uint16 year
 C_STATUS = 0x57         # byte: 0x01 = transfer listed, 0x02 = loan listed
 C_WAGE = 0x20           # int32 wage per week (GBP)
-C_SQUAD = 0x54          # byte: squad status (1 star, 2 important, 3 regular starter, 4 squad, 5 impact sub, 7 fringe, 10 hot prospect, 11 young)
+C_SQUAD = 0x54          # byte: squad status (1 star, 2 important, 3 regular starter, 4 squad, 5 impact sub, 7 fringe, 10 hot prospect,
+                        # 11 young, 15 first-choice goalkeeper; 15-21 are goalkeeper statuses)
 C_CLAUSES = 0x68        # vector begin/end of 8-byte clauses [int32 value][uint16 arg][uint16 type]
 CLAUSE_RELEASE = (0x10, 0x12)   # minimum fee release clause (foreign clubs / domestic clubs)
 CLUB_UID = 0x0C
@@ -149,6 +152,7 @@ class Player:
     wage: int = 0         # GBP per week (0 = no contract)
     release: int = 0      # lowest minimum-fee release clause in GBP (0 = none)
     squad: int = 0        # squad status code (see C_SQUAD)
+    loan_club: str = ''   # club the player is on loan at right now ('' = not on loan)
 
 
 class FMReader:
@@ -216,19 +220,25 @@ class FMReader:
         return self.find_many([needle], align)[needle]
 
     def find_many(self, needles: list[bytes], align: int = 8) -> dict[bytes, list[int]]:
-        """One pass over the heap looking for several byte patterns (reading memory is the slow part)."""
+        """One pass over the heap looking for several byte patterns.
+
+        Pointers end in zero bytes and the heap is full of zeros, which makes bytes.find crawl. So each needle is
+        searched without its trailing zeros (at least 4 bytes kept) and the full match is checked afterwards:
+        about 5x faster on a 7 GB heap.
+        """
         hits: dict[bytes, list[int]] = {n: [] for n in needles}
+        keys = [(n, n.rstrip(b'\x00') if len(n.rstrip(b'\x00')) >= 4 else n) for n in needles]
         for base, size in self.regions():
             off = 0
             while off < size:
                 chunk = min(64 << 20, size - off)
                 data = self.read(base + off, chunk)
-                for needle in needles:
-                    i = data.find(needle)
+                for needle, key in keys:
+                    i = data.find(key)
                     while i != -1:
-                        if (base + off + i) % align == 0:
+                        if (base + off + i) % align == 0 and data[i:i + len(needle)] == needle:
                             hits[needle].append(base + off + i)
-                        i = data.find(needle, i + 1)
+                        i = data.find(key, i + 1)
                 off += chunk
         return hits
 
@@ -281,10 +291,12 @@ class FMReader:
         Returns (vtable, player objects, contract objects)."""
         vt = self.module_base + RVA_PLAYER_VTABLE
         cvt = struct.pack('<Q', self.module_base + RVA_CONTRACT_VTABLE)
-        hits = self.find_many([struct.pack('<Q', vt), cvt])
+        lvt = struct.pack('<Q', self.module_base + RVA_LOAN_VTABLE)
+        hits = self.find_many([struct.pack('<Q', vt), cvt, lvt])
         if len(hits[struct.pack('<Q', vt)]) <= 20000:
             vt = self.discover_vtable()
-            hits = self.find_many([struct.pack('<Q', vt), cvt])
+            hits = self.find_many([struct.pack('<Q', vt), cvt, lvt])
+        self.loan_objs = hits[lvt]
         return vt, hits[struct.pack('<Q', vt)], hits[cvt]
 
     def discover_vtable(self, sample_bytes: int = 256 << 20) -> int:
@@ -357,9 +369,10 @@ class FMReader:
             by_addr[a] = (out[-1], con, club_ptr)
         game = _game_date(starts)
         self._pre_contracts(contracts, by_addr, game)
+        self._loans(getattr(self, 'loan_objs', []), by_addr)
         meta = dict(total=len(out), seconds=round(time.time() - t0, 1),
                     vtable_rva=hex(vt - self.module_base), read_at=time.strftime('%H:%M:%S'),
-                    pre_contracts=sum(1 for p in out if p.pre_club), **game)
+                    pre_contracts=sum(1 for p in out if p.pre_club), on_loan=sum(1 for p in out if p.loan_club), **game)
         return out, meta
 
     def _release_clause(self, begin: int, end: int) -> int:
@@ -368,6 +381,17 @@ class FMReader:
         d = self.read(begin, end - begin)
         fees = [v for v, _, kind in struct.iter_unpack('<iHH', d) if kind in CLAUSE_RELEASE and v > 0]
         return min(fees) if fees else 0
+
+    def _loans(self, loans: list[int], by_addr: dict) -> None:
+        """Loan records also keep past loans and offers; only the one with a real start date is the current loan."""
+        for o in loans:
+            d = self.read(o, L_START + 4)
+            if len(d) < L_START + 4:
+                continue
+            hit = by_addr.get(struct.unpack_from('<Q', d, L_PLAYER)[0])
+            year = struct.unpack_from('<H', d, L_START + 2)[0]
+            if hit and 2000 <= year < 2200:
+                hit[0].loan_club = self.club(struct.unpack_from('<Q', d, L_CLUB)[0])[1]
 
     def _pre_contracts(self, contracts: list[int], by_addr: dict, game: dict) -> None:
         """A player can have a second contract object that starts in the future. When its club is not

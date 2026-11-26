@@ -109,5 +109,20 @@ class TestPreContracts(unittest.TestCase):
         self.assertEqual(self.run_case(self.new_club, (2028, 1), end_year=1900).pre_club, '')
 
 
+
+class TestLoans(unittest.TestCase):
+    def test_only_the_active_loan_counts(self):
+        p_addr, avai, old = BASE + 0x1000, BASE + 0x3000, BASE + 0x4000
+        def rec(club, year):
+            d = bytearray(fmreader.L_START + 4)
+            struct.pack_into('<Q', d, fmreader.L_PLAYER, p_addr)
+            struct.pack_into('<Q', d, fmreader.L_CLUB, club)
+            struct.pack_into('<HH', d, fmreader.L_START, 100, year)
+            return bytes(d)
+        r = FakeReader({BASE + 0x5000: rec(old, 1900), BASE + 0x6000: rec(avai, 2027)}, {avai: 'Avaí', old: 'Azuriz'})
+        p = player()
+        r._loans([BASE + 0x5000, BASE + 0x6000], {p_addr: (p, 0, 0)})
+        self.assertEqual(p.loan_club, 'Avaí')
+
 if __name__ == '__main__':
     unittest.main()

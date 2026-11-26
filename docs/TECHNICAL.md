@@ -29,7 +29,9 @@ A full read of ~80k players takes 15–35 s; afterwards everything is filtered i
 ## How the data was found
 
 1. **Scan the heap.** Enumerate committed, readable `MEM_PRIVATE` regions with `VirtualQueryEx` and read them in
-   64 MB chunks (~5 GB in ~25 s with `bytes.find`).
+   64 MB chunks. Search each vtable pointer **without its trailing zero bytes** and check the full 8 bytes afterwards:
+   the heap is full of zeros, and `bytes.find` with a needle ending in `00 00` is ~5x slower (7 GB: 77 s → 14 s for
+   the three vtables).
 2. **Anchor on a known player.** Take a player's unique ID from the Pre-Game Editor and his CA/PA from the game.
    The UID appears **twice in a row** (`+0x0C` and `+0x10`) and CA/PA sit **before** the object start.
 3. **The vtable identifies the class.** The qword at `+0x00` is the vtable pointer of the player class; counting
@@ -73,7 +75,7 @@ Offsets are relative to the object start (where the vtable pointer is).
 | `+0x44` | start date (day & 0x1FF, year) — the newest start shared by 3+ contracts ≈ today's in-game date |
 | `+0x48` | end date (day, year) |
 | `+0x20` | int32 wage per week (GBP) |
-| `+0x54` | squad status: `1` star player, `2` important, `3` regular starter, `4` squad player, `5` impact sub, `7` fringe, `10` hot prospect, `11` decent young player (13, 15, 16, 20-22 seen but not identified; found by matching the in-game status menu order and the CA/PA/age profile of each code) |
+| `+0x54` | squad status: `1` star player, `2` important, `3` regular starter, `4` squad player, `5` impact sub, `7` fringe, `10` hot prospect, `11` decent young player, `15` first-choice goalkeeper (15-21 are only used for goalkeepers; 13, 16-22 not identified; found by matching the in-game status menu order and the CA/PA/age profile of each code) |
 | `+0x57` | status: `0x01` transfer listed, `0x02` loan listed |
 | `+0x68`, `+0x70` | clause vector (begin, end); 8-byte entries `[int32 value][uint16 arg][uint16 type]`. Types seen: `0x08` sell-on % (arg), `0x0E` wage rise on promotion, `0x10` / `0x12` minimum fee release clause (foreign / domestic clubs), `0x20` appearance bonus, `0x26` unused-sub bonus |
 
@@ -83,7 +85,9 @@ it is a **pre-contract** already signed (shown as `→ Club`). Placeholder recor
 
 ### Loan record — vtable `game_plugin.dll + 0x4F2A0F8`
 
-`+0x08` player, `+0x10` club, `+0x48` end date, `+0xC0` int32 future fee (GBP). There may be more than one per player.
+`+0x08` player, `+0x10` club the player is loaned **to**, `+0x48` end date, `+0x4C` start date, `+0xC0` int32 future fee (GBP).
+Past loans and loan offers use the same class (a player can have several records); only the **current** loan has a real
+start date at `+0x4C` — the others keep the `1/1/1900` placeholder. Checked on a real save: 1,441 active loans, one per player.
 
 ### Club — vtable `game_plugin.dll + 0x4E42F38`
 
@@ -106,7 +110,8 @@ it is a **pre-contract** already signed (shown as `→ Club`). Placeholder recor
   tracks CA the way a value would; only the reputation fields (`-0x2C .. -0x28`) and the contract's loyalty bonus
   (`contract +0xA8`) do. FM most likely computes the value on demand (the screen shows a range that depends on
   scouting knowledge).
-- **Injuries / personality** were not found yet: several pointers are set for only 1-25% of the players
+- **Injuries / personality** were not found yet (tried: pointers set only for an injured player vs a healthy teammate,
+  and objects pointing back to the injured player — none of them was injury-specific): several pointers are set for only 1-25% of the players
   (e.g. `+0x150/+0x158/+0x160` looks like a vector, `+0x210` is set for ~1%), but none holds dates around the
   game date. Mapping them needs labelled examples (players known to be injured, editor values for personality).
 - The squad-status names were matched with the in-game status menu, which lists them in code order, and checked

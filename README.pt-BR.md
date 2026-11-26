@@ -44,6 +44,7 @@ e **não tem dependências**: só Python e o seu navegador.
 | 👯 **Jogadores parecidos** | Em cada ficha: os jogadores com atributos mais parecidos, com idade, clube e salário |
 | 💰 **Salário, multa e status no elenco** | Na tabela e na ficha, em £, €, $ ou R$, por semana ou por mês |
 | 📋 **Listas prontas** | Promessas, melhores livres, pechinchas (CA alto, salário baixo) e jogadores com multa rescisória |
+| 🔁 **Empréstimos** | Emprestados mostram onde estão jogando (`Empr. → Clube`), com o filtro *Emprestados agora*; o Melhor XI conta eles nesse clube |
 | 🤝 **Pré-contratos** | Veja quem já assinou com outro clube (`→ Clube`, com a data de início) e filtre por isso |
 | 🖼️ **Fotos dos jogadores** | Usa o facepack que você tiver instalado, sozinho (iniciais quando não há foto) |
 | 🔍 **Busca global** | Digitar um nome ou clube busca em todos os jogadores do save, com qualquer filtro ligado |

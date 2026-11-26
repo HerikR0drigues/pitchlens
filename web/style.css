@@ -169,6 +169,7 @@ tbody tr:hover .av{transform:scale(1.12);box-shadow:0 0 0 2px var(--accent),0 4p
 .tag:first-child{margin-left:0}
 .tag.free{background:#16a34a1f;color:var(--good)}.tag.tl{background:#f59e0b1f;color:var(--tl)}.tag.ll{background:#38bdf81f;color:var(--ll)}
 .tag.pre{background:#f472b61f;color:#ec4899}
+.tag.onloan{background:#2dd4bf1f;color:#14b8a6}
 .tag.ctr{background:var(--card2);color:var(--muted);border:1px solid var(--line)}
 .flag{font:600 10.5px var(--mono);color:var(--faint);margin-left:5px}
 .star{border:0;background:none;padding:2px;color:var(--line2);line-height:0;border-radius:6px}

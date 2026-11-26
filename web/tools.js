@@ -107,7 +107,8 @@ function slotXY(slots) {
 }
 function clubPool(club) {
   if (club === '__fav') return [...FAV].map(u => BY_UID.get(u)).filter(Boolean);
-  return ALL.filter(p => p.club === club && !p.female === (F.sex !== 'F'));
+  // players on loan count for the club they are playing for
+  return ALL.filter(p => (p.loan_club ? p.loan_club === club : p.club === club) && !p.female === (F.sex !== 'F'));
 }
 function openBestXI() {
   if (!ALL.length) return toast(t('loading'));

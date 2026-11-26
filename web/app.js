@@ -7,7 +7,7 @@ const URLP = new URLSearchParams(location.search);
 // grid on the mini pitch: [column 1..5, row 1..7], attack on top
 const GRID = {12:[3,1],9:[1,2],10:[3,2],11:[5,2],6:[1,3],7:[3,3],8:[5,3],13:[1,4],5:[3,4],14:[5,4],2:[1,5],3:[3,5],4:[5,5],1:[3,6],0:[3,7]};
 const PXY = {0:[50,92],1:[50,80],2:[14,70],3:[50,70],4:[86,70],13:[14,56],14:[86,56],5:[50,57],6:[14,41],7:[50,42],8:[86,41],9:[17,26],10:[50,26],11:[83,26],12:[50,10]};
-const SIT = [['free','sit_free','#22c55e'],['ending','sit_end','#a78bfa'],['transfer','sit_tl','#f59e0b'],['loan','sit_ll','#38bdf8'],['pre','sit_pre','#f472b6'],['fav','sit_fav','#facc15'],['all','sit_all','#64748b']];
+const SIT = [['free','sit_free','#22c55e'],['ending','sit_end','#a78bfa'],['transfer','sit_tl','#f59e0b'],['loan','sit_ll','#38bdf8'],['pre','sit_pre','#f472b6'],['onloan','sit_onloan','#2dd4bf'],['fav','sit_fav','#facc15'],['all','sit_all','#64748b']];
 const RANGES = [['rCA','ca','ca',0,200],['rPA','pa','pa',0,200],['rGAP','gap','gap',0,120],['rAGE','age','age',14,45]];
 const RADAR = {
   field: [['ax_finishing',[2,4,6]],['ax_technique',[23,1,22]],['ax_creativity',[7,10,26,18]],['ax_defending',[9,5,20,17]],
@@ -27,7 +27,7 @@ const LISTS = {
 const LIST_RULE = {bargains: p => !p.free && p.wage > 0, release: p => p.release > 0};
 // money is stored in GBP; rates are approximate (BRL matches FM27's own rate)
 const CUR = {GBP: ['£', 1], EUR: ['€', 1.17], USD: ['$', 1.27], BRL: ['R$', 6.951]};
-const SQUAD = {1: 'sq_star', 2: 'sq_important', 3: 'sq_regular', 4: 'sq_squad', 5: 'sq_impact', 7: 'sq_fringe', 10: 'sq_hot', 11: 'sq_young'};
+const SQUAD = {1: 'sq_star', 2: 'sq_important', 3: 'sq_regular', 4: 'sq_squad', 5: 'sq_impact', 7: 'sq_fringe', 10: 'sq_hot', 11: 'sq_young', 15: 'sq_gk1'};
 const NOPHOTO = new URLSearchParams(location.search).get('photos') === '0';
 
 let F = Object.assign({}, DEF, store('filters') || {});
@@ -76,7 +76,8 @@ const FOOT_LBL = {L: ['L', 'E'], R: ['R', 'D'], B: ['B', 'A']};
 function footTag(p) { const f = FOOT_LBL[p.foot]; if (!f) return ''; const title = {L: t('left'), R: t('right'), B: t('both')}[p.foot]; return `<span class="pt foot" title="${esc(title)}">${LANG() === 'pt' ? f[1] : f[0]}</span>`; }
 function preDate(p) { if (!p.pre_year) return ''; if (!p.pre_day) return String(p.pre_year); const d = new Date(p.pre_year, 0, p.pre_day); return d.toLocaleDateString(LANG() === 'pt' ? 'pt-BR' : 'en-GB'); }
 function preTag(p) { return p.pre_club ? `<span class="tag pre" title="${esc(t('preTitle', {c: p.pre_club, d: preDate(p)}))}">→ ${esc(p.pre_club)}</span>` : ''; }
-function listTags(p) { return preTag(p) + (p.transfer_listed ? `<span class="tag tl">${LANG() === 'pt' ? 'Transf.' : 'TL'}</span>` : '') + (p.loan_listed ? `<span class="tag ll">${LANG() === 'pt' ? 'Empr.' : 'LL'}</span>` : ''); }
+function loanTag(p) { return p.loan_club ? `<span class="tag onloan" title="${esc(t('onLoanTitle', {c: p.loan_club}))}">${esc(t('onLoanShort'))} ${esc(p.loan_club)}</span>` : ''; }
+function listTags(p) { return loanTag(p) + preTag(p) + (p.transfer_listed ? `<span class="tag tl">${LANG() === 'pt' ? 'Transf.' : 'TL'}</span>` : '') + (p.loan_listed ? `<span class="tag ll">${LANG() === 'pt' ? 'Empr.' : 'LL'}</span>` : ''); }
 const STAR = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="m12 2.8 2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2l-5.7 3.1 1.2-6.4-4.7-4.4 6.4-.8z"/></svg>';
 function toast(msg) { const el = $('#toast'); el.textContent = msg; el.classList.add('on'); clearTimeout(toast.tm); toast.tm = setTimeout(() => el.classList.remove('on'), 1600); }
 function gameDateText() {
@@ -148,10 +149,10 @@ function buildPitch() {
 // ---------- filtering
 function apply() {
   const q = norm(F.q), ano = gameYear(), pm = +F.posMin, role = ROLE_BY_ID[F.role], rule = LIST_RULE[F.list];
-  const cnt = {free:0, ending:0, transfer:0, loan:0, pre:0, fav:0, all:0};
+  const cnt = {free:0, ending:0, transfer:0, loan:0, pre:0, onloan:0, fav:0, all:0};
   VIEW = []; BASE = [];
   const sitOk = p => F.sit === 'all' || (F.sit === 'free' && p.free) || (F.sit === 'ending' && !p.free && p.contract_year === ano)
-    || (F.sit === 'transfer' && p.transfer_listed) || (F.sit === 'loan' && p.loan_listed) || (F.sit === 'pre' && p.pre_club) || (F.sit === 'fav' && FAV.has(p.uid));
+    || (F.sit === 'transfer' && p.transfer_listed) || (F.sit === 'loan' && p.loan_listed) || (F.sit === 'pre' && p.pre_club) || (F.sit === 'onloan' && p.loan_club) || (F.sit === 'fav' && FAV.has(p.uid));
   for (const p of ALL) {
     if (q) {                                   // global search: ignores every other filter
       if (!p._n.includes(q) && !p._c.includes(q) && !norm(p.pre_club || '').includes(q) && !noteMatch(p, q)) continue;
@@ -171,7 +172,7 @@ function apply() {
       && (p.gap <= F.gap[1] || F.gap[1] === 120) && p.age >= F.age[0] && p.age <= F.age[1];
     if (inR) {
       cnt.all++; if (p.free) cnt.free++; else if (p.contract_year === ano) cnt.ending++;
-      if (p.transfer_listed) cnt.transfer++; if (p.loan_listed) cnt.loan++; if (p.pre_club) cnt.pre++; if (FAV.has(p.uid)) cnt.fav++;
+      if (p.transfer_listed) cnt.transfer++; if (p.loan_listed) cnt.loan++; if (p.pre_club) cnt.pre++; if (p.loan_club) cnt.onloan++; if (FAV.has(p.uid)) cnt.fav++;
     }
     if (!sitOk(p)) continue;
     BASE.push(p); if (inR) VIEW.push(p);
@@ -331,7 +332,7 @@ async function load(path, tries = 0) {
     if (r.meta) {
       META = r.meta;
       const c = r.fields;
-      ALL = r.rows.map(row => { const o = {}; c.forEach((k, i) => o[k] = row[i]); o._n = norm(o.name); o._c = norm(o.club); return o; });
+      ALL = r.rows.map(row => { const o = {}; c.forEach((k, i) => o[k] = row[i]); o._n = norm(o.name); o._c = norm(o.club + ' ' + (o.loan_club || '')); return o; });
       BY_UID = new Map(ALL.map(p => [p.uid, p])); GROUPS = r.groups || {};
       recordHistory(); renderCmpBar(); checkUpdate();
       fillNations();
