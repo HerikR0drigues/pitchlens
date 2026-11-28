@@ -100,7 +100,8 @@ start date at `+0x4C` — the others keep the `1/1/1900` placeholder. Checked on
 
 ### Nation
 
-`+0x18` name, `+0x20` short name, `+0x28` three-letter code, `+0x30` adjective.
+`+0x18` name, `+0x20` short name, `+0x28` three-letter code, `+0x30` adjective, `+0xF0` continent
+(continent `+0x18` name in the game's language, e.g. *América do Sul*; the same object also holds the confederation, e.g. CONMEBOL).
 
 ## Research notes (not used by the app yet)
 

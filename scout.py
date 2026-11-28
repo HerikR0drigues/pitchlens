@@ -25,7 +25,7 @@ sys.path.insert(0, str(ROOT))
 import faces  # noqa: E402
 import fmreader  # noqa: E402
 
-__version__ = '1.2.0'
+__version__ = '1.3.0'
 REPO = 'HerikR0drigues/pitchlens'
 HOST, PORT = '127.0.0.1', 8770
 WEB = ROOT / 'web'
@@ -37,7 +37,7 @@ _state: dict = {'players': [], 'by_uid': {}, 'meta': None, 'error': None, 'error
 
 LIST_FIELDS = ('uid', 'name', 'ca', 'pa', 'nation', 'nation_code', 'birth_year', 'club', 'club_uid',
                'contract_year', 'free', 'transfer_listed', 'loan_listed', 'female', 'pos', 'foot',
-               'pre_club', 'pre_year', 'wage', 'release', 'squad', 'loan_club')
+               'pre_club', 'pre_year', 'wage', 'release', 'squad', 'loan_club', 'continent')
 
 
 def refresh() -> None:

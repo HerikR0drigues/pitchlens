@@ -110,6 +110,21 @@ class TestPreContracts(unittest.TestCase):
 
 
 
+class TestNation(unittest.TestCase):
+    def test_name_code_and_continent(self):
+        nat, cont, s_name, s_code, s_cont = BASE + 0x100, BASE + 0x400, BASE + 0x800, BASE + 0x900, BASE + 0xA00
+        n = bytearray(fmreader.N_CONTINENT + 8)
+        struct.pack_into('<Q', n, fmreader.N_NAME, s_name)
+        struct.pack_into('<Q', n, fmreader.N_CODE, s_code)
+        struct.pack_into('<Q', n, fmreader.N_CONTINENT, cont)
+        c = bytearray(0x20)
+        struct.pack_into('<Q', c, 0x18, s_cont)
+        txt = lambda s: struct.pack('<I', len(s.encode())) + s.encode()
+        r = FakeReader({nat: bytes(n), cont: bytes(c), s_name: txt('Brasil'), s_code: txt('BRA'), s_cont: txt('América do Sul')})
+        r._strcache, r._nations = {}, {}
+        self.assertEqual(r.nation(nat), ('Brasil', 'BRA', 'América do Sul'))
+
+
 class TestLoans(unittest.TestCase):
     def test_only_the_active_loan_counts(self):
         p_addr, avai, old = BASE + 0x1000, BASE + 0x3000, BASE + 0x4000

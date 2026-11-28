@@ -43,6 +43,7 @@ CLAUSE_RELEASE = (0x10, 0x12)   # minimum fee release clause (foreign clubs / do
 CLUB_UID = 0x0C
 CLUB_NAMES = 0x30       # -> block: +0xC0 full name, +0xC8 short name
 N_NAME, N_CODE = 0x18, 0x28
+N_CONTINENT = 0xF0      # Nation -> Continent (+0x18 name in the game's language, e.g. 'América do Sul')
 P_POS = -0x138          # 15 bytes: familiarity 1..20 per position (order in POSITIONS)
 P_ATTR = -0x129         # 54 bytes: attributes 1..100 (shown = (v+2)//5), order in ATTRIBUTES
 
@@ -153,6 +154,7 @@ class Player:
     release: int = 0      # lowest minimum-fee release clause in GBP (0 = none)
     squad: int = 0        # squad status code (see C_SQUAD)
     loan_club: str = ''   # club the player is on loan at right now ('' = not on loan)
+    continent: str = ''   # continent of the nationality, in the game's language
 
 
 class FMReader:
@@ -260,13 +262,19 @@ class FMReader:
     def name_entry(self, p: int) -> str:
         return self.rstr(self.q(p)) if _is_ptr(p) else ''
 
-    def nation(self, p: int) -> tuple[str, str]:
+    def nation(self, p: int) -> tuple[str, str, str]:
+        """(name, three-letter code, continent name)."""
         if not _is_ptr(p):
-            return ('', '')
+            return ('', '', '')
         if p not in self._nations:
-            d = self.read(p, 0x40)
-            self._nations[p] = ((self.rstr(struct.unpack_from('<Q', d, N_NAME)[0]),
-                                 self.rstr(struct.unpack_from('<Q', d, N_CODE)[0])) if len(d) == 0x40 else ('', ''))
+            d = self.read(p, N_CONTINENT + 8)
+            if len(d) == N_CONTINENT + 8:
+                cont = struct.unpack_from('<Q', d, N_CONTINENT)[0]
+                self._nations[p] = (self.rstr(struct.unpack_from('<Q', d, N_NAME)[0]),
+                                    self.rstr(struct.unpack_from('<Q', d, N_CODE)[0]),
+                                    self.rstr(self.q(cont + 0x18)) if _is_ptr(cont) else '')
+            else:
+                self._nations[p] = ('', '', '')
         return self._nations[p]
 
     def club(self, p: int) -> tuple[int, str]:
@@ -343,7 +351,7 @@ class FMReader:
             q = lambda off: struct.unpack_from('<Q', d, o + off)[0]
             first, second = self.name_entry(q(P_FIRST)), self.name_entry(q(P_SECOND))
             common = self.name_entry(q(P_COMMON))
-            nat, natc = self.nation(q(P_NATION))
+            nat, natc, cont = self.nation(q(P_NATION))
             bday, byear = struct.unpack_from('<HH', d, o + P_BIRTH)
             con = q(P_CONTRACT)
             cuid, cname, cday, cyear, st, club_ptr, wage, release, squad = 0, '', 0, 0, 0, 0, 0, 0, 0
@@ -365,7 +373,7 @@ class FMReader:
                               cname, cuid, cyear, cday, not _is_ptr(con), bool(st & 1), bool(st & 2),
                               bool(d[o + P_FLAGS] & 0x10),
                               list(d[o + P_POS:o + P_POS + 15]), attrs, preferred_foot(attrs)))
-            out[-1].wage, out[-1].release, out[-1].squad = wage, release, squad
+            out[-1].wage, out[-1].release, out[-1].squad, out[-1].continent = wage, release, squad, cont
             by_addr[a] = (out[-1], con, club_ptr)
         game = _game_date(starts)
         self._pre_contracts(contracts, by_addr, game)

@@ -48,7 +48,7 @@ e **não tem dependências**: só Python e o seu navegador.
 | 🤝 **Pré-contratos** | Veja quem já assinou com outro clube (`→ Clube`, com a data de início) e filtre por isso |
 | 🖼️ **Fotos dos jogadores** | Usa o facepack que você tiver instalado, sozinho (iniciais quando não há foto) |
 | 🔍 **Busca global** | Digitar um nome ou clube busca em todos os jogadores do save, com qualquer filtro ligado |
-| 🔎 **Filtros inteligentes** | Sem contrato, contrato acabando na temporada, lista de transferências, lista de empréstimos, favoritos, nacionalidade, sexo, pé preferido |
+| 🔎 **Filtros inteligentes** | Continente (América do Sul, Europa…), sem contrato, contrato acabando na temporada, lista de transferências, lista de empréstimos, favoritos, nacionalidade, sexo, pé preferido |
 | 📊 **Faixas com histograma** | CA, PA, margem de evolução (PA − CA) e idade, cada uma com gráfico de distribuição ao vivo |
 | ⚽ **Seletor de posições** | Clique nas posições de um campinho e escolha familiaridade *Natural*, *Acostumado* ou *Improvisa* |
 | 🧾 **Ficha do jogador** | Radar das principais áreas, mapa de posições, pé preferido e todos os atributos técnicos, mentais, físicos, de goleiro e ocultos |

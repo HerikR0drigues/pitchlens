@@ -89,6 +89,7 @@ aside.side{border-right:1px solid var(--line);overflow-y:auto;background:var(--p
 .sel::after{content:"";position:absolute;right:12px;top:12px;width:6px;height:6px;border-right:1.6px solid var(--muted);border-bottom:1.6px solid var(--muted);transform:rotate(45deg);pointer-events:none}
 .quick{display:flex;gap:5px;margin-top:6px;flex-wrap:wrap}
 .quick button{height:22px;padding:0 8px;border-radius:99px;border:1px solid var(--line);background:none;color:var(--muted);font-size:11px;font-weight:600}
+.quick button .n{margin-left:5px;font:600 10px var(--mono);color:var(--faint)}
 .quick button:hover,.quick button.on{border-color:var(--accent);color:var(--text);background:var(--soft)}
 
 .pitch{position:relative;border-radius:12px;background:var(--pitch);border:1px solid var(--pline);padding:10px 8px;overflow:hidden}

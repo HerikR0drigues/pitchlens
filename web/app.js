@@ -15,7 +15,7 @@ const RADAR = {
   gk:    [['ax_reflexes',[21,19]],['ax_handling',[11,33]],['ax_aerial',[12,13,39]],['ax_distribution',[15,16,7]],
           ['ax_mental',[53,18,52,20]],['ax_physical',[46,36,50]]],
 };
-const DEF = {q:'',sit:'free',nat:'',sex:'M',foot:'',pos:[],posMin:15,ca:[0,200],pa:[0,200],gap:[0,120],age:[15,40],
+const DEF = {q:'',sit:'free',cont:'',nat:'',sex:'M',foot:'',pos:[],posMin:15,ca:[0,200],pa:[0,200],gap:[0,120],age:[15,40],
              year:null,sort:'ca',dir:-1,theme:null,lang:null,role:'',list:'',cur:null,per:null};
 // ready-made lists: filter overrides + an extra rule
 const LISTS = {
@@ -159,6 +159,7 @@ function apply() {
       p.gap = p.pa - p.ca; p.age = p.birth_year ? ano - p.birth_year : 0;
       cnt.all++; BASE.push(p); VIEW.push(p); continue;
     }
+    if (F.cont && p.continent !== F.cont) continue;
     if (F.nat && p.nation !== F.nat) continue;
     if ((F.sex === 'M' && p.female) || (F.sex === 'F' && !p.female)) continue;
     if (F.foot && p.foot !== F.foot && !(p.foot === 'B' && F.foot !== 'B')) continue;
@@ -191,7 +192,7 @@ function apply() {
   shown = PAGE; render(); kpis(); countFilters(); store('filters', F);
 }
 function countFilters() {
-  let n = 0; if (F.role) n++; if (F.list) n++; if (F.sit !== 'all') n++; if (F.nat) n++; if (F.sex) n++; if (F.foot) n++; if (F.pos.length) n++; if (F.q) n++;
+  let n = 0; if (F.role) n++; if (F.list) n++; if (F.sit !== 'all') n++; if (F.cont) n++; if (F.nat) n++; if (F.sex) n++; if (F.foot) n++; if (F.pos.length) n++; if (F.q) n++;
   RANGES.forEach(([, k, , mn, mx]) => { if (F[k][0] !== mn || F[k][1] !== mx) n++; });
   $('#fcount').textContent = n;
 }
@@ -361,7 +362,13 @@ function setStatus() {
   $('#yearHint').textContent = !F.year && META?.game_year ? `${gameDateText()} · ${t('detected')}` : '';
 }
 function fillNations() {
-  const c = {}; ALL.forEach(p => { if (p.nation) c[p.nation] = (c[p.nation] || 0) + 1; });
+  // continents (names come from the game, in its language), biggest first
+  const k = {}; ALL.forEach(p => { if (p.continent) k[p.continent] = (k[p.continent] || 0) + 1; });
+  if (F.cont && !k[F.cont]) F.cont = '';
+  $('#contQuick').innerHTML = ['', ...Object.keys(k).sort((a, b) => k[b] - k[a])]
+    .map(n => `<button data-v="${esc(n)}">${esc(n || t('all'))}${n ? `<span class="n">${fmt(k[n])}</span>` : ''}</button>`).join('');
+  $$('#contQuick button').forEach(b => b.onclick = () => { F.cont = b.dataset.v; F.nat = ''; fillNations(); apply(); });
+  const c = {}; ALL.forEach(p => { if (p.nation && (!F.cont || p.continent === F.cont)) c[p.nation] = (c[p.nation] || 0) + 1; });
   if (F.nat && !c[F.nat]) F.nat = '';
   $('#nat').innerHTML = `<option value="">${esc(t('allNations'))}</option>` + Object.keys(c).sort((a, b) => a.localeCompare(b)).map(n => `<option value="${esc(n)}">${esc(n)} · ${fmt(c[n])}</option>`).join('');
   const top = Object.entries(c).sort((a, b) => b[1] - a[1]).slice(0, 4).map(x => x[0]);
@@ -380,6 +387,7 @@ function sync() {
   $$('#foot button').forEach(b => b.classList.toggle('on', b.dataset.v === (F.foot || '')));
   $$('#posMin button').forEach(b => b.classList.toggle('on', +b.dataset.v === +F.posMin));
   $$('#natQuick button').forEach(b => b.classList.toggle('on', b.dataset.v === F.nat));
+  $$('#contQuick button').forEach(b => b.classList.toggle('on', b.dataset.v === (F.cont || '')));
   $('#role').value = F.role; $('#cur').value = curCode();
   $$('#per button').forEach(b => b.classList.toggle('on', b.dataset.v === (perMonth() ? 'm' : 'w')));
   $$('#lists button').forEach(b => b.classList.toggle('on', b.dataset.v === F.list));
@@ -421,11 +429,12 @@ document.addEventListener('keydown', e => {
   if (e.key === '/' && !['INPUT', 'SELECT'].includes(document.activeElement.tagName)) { e.preventDefault(); $('#q').focus(); }
 });
 
-// ---------- boot (URL params win: ?lang=en|pt&theme=dark|light&sit=<situation>&q=<search>&role=<role id>&photos=0&p=<uid>&xi=<club>&form=<formation>&cmp=<uid,uid>)
+// ---------- boot (URL params win: ?lang=en|pt&theme=dark|light&sit=<situation>&q=<search>&cont=<continent>&role=<role id>&photos=0&p=<uid>&xi=<club>&form=<formation>&cmp=<uid,uid>)
 if (URLP.get('lang')) F.lang = URLP.get('lang') === 'pt' ? 'pt' : 'en';
 if (!F.lang) F.lang = (navigator.language || 'en').toLowerCase().startsWith('pt') ? 'pt' : 'en';
 if (SIT.some(s => s[0] === URLP.get('sit'))) F.sit = URLP.get('sit');
 if (URLP.has('q')) F.q = URLP.get('q');
+if (URLP.has('cont')) F.cont = URLP.get('cont');
 if (ROLE_BY_ID[URLP.get('role')]) { F.role = URLP.get('role'); F.sort = 'role'; F.dir = -1; }
 if (URLP.get('theme')) F.theme = URLP.get('theme') === 'light' ? 'light' : 'dark';
 toolsInit(); applyTheme(); applyLang(); sync(); setStatus(); render();
