@@ -160,12 +160,14 @@ body.searching .gsearch{display:block;animation:fadeUp .25s var(--ease)}
 body.searching .side .blk{opacity:.45;transition:opacity .2s}
 @keyframes fadeUp{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
 .pl{display:flex;align-items:center;gap:10px}
-.av{position:relative;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:11px;color:#fff;flex:none;overflow:hidden;background:linear-gradient(135deg,var(--h1),var(--h2));box-shadow:0 0 0 1px var(--line2),0 2px 6px #0003;transition:transform .25s var(--ease),box-shadow .25s}
+.av{position:relative;width:34px;height:34px;border-radius:28%;display:grid;place-items:center;font-weight:800;font-size:11px;color:#fff;flex:none;overflow:hidden;background:linear-gradient(135deg,var(--h1),var(--h2));box-shadow:0 0 0 1px var(--line2),0 2px 6px #0003;transition:transform .25s var(--ease),box-shadow .25s}
 .av span{transition:opacity .3s}
-.av img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 12%;opacity:0;transform:scale(1.18);filter:blur(3px);transition:opacity .45s var(--ease),transform .6s var(--ease),filter .45s}
-.av.ph{background:radial-gradient(circle at 50% 30%,var(--card2),var(--card))}
-.av.ph span{opacity:0}.av.ph img{opacity:1;transform:none;filter:none}
-tbody tr:hover .av{transform:scale(1.12);box-shadow:0 0 0 2px var(--accent),0 4px 12px #0005}
+/* face packs are tight square cut-outs (head fills the frame, 256-colour PNG): show the whole square, no circle crop,
+   no scaling transforms (they blur the small image), on a soft neutral background that hides the jagged edges */
+.av img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;opacity:0;transition:opacity .4s var(--ease);image-rendering:auto}
+.av.ph{background:linear-gradient(180deg,color-mix(in srgb,var(--text) 10%,var(--card2)),var(--card2))}
+.av.ph span{opacity:0}.av.ph img{opacity:1}
+tbody tr:hover .av{box-shadow:0 0 0 2px var(--accent),0 4px 12px #0005}
 .nm{font-weight:650}.sub{font-size:11px;color:var(--muted)}
 .poss{display:flex;gap:3px}
 .pt{font-size:9.5px;font-weight:800;padding:1px 5px;border-radius:5px;background:var(--card2);border:1px solid var(--line2);color:var(--muted)}
@@ -199,7 +201,7 @@ tbody tr:hover .av{transform:scale(1.12);box-shadow:0 0 0 2px var(--accent),0 4p
 .drawer{position:fixed;top:0;right:0;bottom:0;width:min(620px,100vw);background:var(--panel);border-left:1px solid var(--line);box-shadow:var(--shadow);transform:translateX(102%);transition:transform .28s var(--ease);overflow-y:auto;z-index:20}
 .drawer.on{transform:none}
 .dh{padding:16px 18px 14px;border-bottom:1px solid var(--line);display:flex;gap:14px;align-items:center;position:sticky;top:0;background:color-mix(in srgb,var(--panel) 92%,transparent);backdrop-filter:blur(10px);z-index:3}
-.dh .av{width:64px;height:64px;font-size:20px;box-shadow:0 0 0 2px var(--accent),0 6px 18px #0006;animation:avIn .5s var(--ease)}
+.dh .av{width:72px;height:72px;font-size:22px;box-shadow:0 0 0 2px var(--accent),0 6px 18px #0006;animation:avIn .5s var(--ease)}
 @keyframes avIn{from{transform:scale(.7);opacity:0}to{transform:none;opacity:1}}
 @media (prefers-reduced-motion:reduce){.av,.av img,.dh .av{transition:none;animation:none}}
 .dh h2{margin:0;font-size:18px;letter-spacing:-.2px}
