@@ -209,8 +209,11 @@ function apply() {
   VIEW.sort((a, b) => {
     let x = a[k], y = b[k];
     if (k === 'pos0') { x = natural(a)[0]?.[1] ?? 99; y = natural(b)[0]?.[1] ?? 99; }
-    if (k === 'est') { x = a.est ?? -1; y = b.est ?? -1; }
-    if (k === 'release') { x = a.release || Infinity; y = b.release || Infinity; if (x === y) return b.ca - a.ca; }
+    if (k === 'est' || k === 'release') {
+      const ha = a[k] > 0, hb = b[k] > 0;
+      if (ha !== hb) return ha ? -1 : 1;
+      if (!ha) return b.ca - a.ca;
+    }
     return (typeof x === 'string' ? x.localeCompare(y) : x - y) * d || b.ca - a.ca;
   });
   RANGES.forEach(([id]) => drawHist($('#' + id)));
@@ -234,6 +237,10 @@ function kpis() {
   $('#spark').innerHTML = `<defs><linearGradient id="sg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="var(--accent)" stop-opacity=".35"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs><polygon points="0,30 ${pts} 84,30" fill="url(#sg)"/><polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="1.5" vector-effect="non-scaling-stroke"/>`;
 }
 function render() {
+  // optional columns (role rating, score, release clause): headers and cells follow the same state
+  document.body.classList.toggle('hasrole', !!F.role);
+  document.body.classList.toggle('hasvalue', F.sort === 'value');
+  document.body.classList.toggle('hasclause', showClause());
   $$('th[data-k]').forEach(th => { const on = th.dataset.k === F.sort; th.classList.toggle('on', on); th.innerHTML = esc(t(th.dataset.i18n)) + (on ? `<span class="a">${F.dir < 0 ? '↓' : '↑'}</span>` : ''); });
   $('#rows').innerHTML = VIEW.slice(0, shown).map(p => {
     const nat = natural(p).slice(0, 3);
@@ -418,9 +425,6 @@ function sync() {
   $('#role').value = F.role; $('#cur').value = curCode();
   $$('#per button').forEach(b => b.classList.toggle('on', b.dataset.v === (perMonth() ? 'm' : 'w')));
   $$('#lists button').forEach(b => b.classList.toggle('on', b.dataset.v === F.list));
-  document.body.classList.toggle('hasrole', !!F.role);
-  document.body.classList.toggle('hasvalue', F.sort === 'value');
-  document.body.classList.toggle('hasclause', showClause());
   $('#clauseQuick').innerHTML = CLAUSE_STEPS[curCode()].map(v => { const g = Math.round(fromCur(v)); return `<button data-v="${g}" class="${Math.abs(g - F.clauseMax) < 2 ? 'on' : ''}">${esc(t('upTo'))} ${esc(money(g))}</button>`; }).join('');
   $$('#clauseQuick button').forEach(b => b.onclick = () => { const g = +b.dataset.v; F.clauseMax = Math.abs(g - F.clauseMax) < 2 ? 0 : g; if (F.clauseMax && F.sort !== 'value') { F.sort = 'release'; F.dir = 1; } sync(); apply(); });
   $$('#cost button').forEach(b => b.classList.toggle('on', F.cost.includes(b.dataset.v)));
@@ -441,7 +445,7 @@ $$('#per button').forEach(b => b.onclick = () => { F.per = b.dataset.v; sync(); 
 $$('#sex button').forEach(b => b.onclick = () => { F.sex = b.dataset.v; sync(); apply(); });
 $$('#foot button').forEach(b => b.onclick = () => { F.foot = b.dataset.v; sync(); apply(); });
 $$('#posMin button').forEach(b => b.onclick = () => { F.posMin = +b.dataset.v; sync(); apply(); });
-$$('th[data-k]').forEach(th => th.onclick = () => { const k = th.dataset.k; F.dir = F.sort === k ? -F.dir : (['name', 'nation', 'club', 'pos0'].includes(k) ? 1 : -1); F.sort = k; apply(); });
+$$('th[data-k]').forEach(th => th.onclick = () => { const k = th.dataset.k; F.dir = F.sort === k ? -F.dir : (['name', 'nation', 'club', 'pos0', 'release'].includes(k) ? 1 : -1); F.sort = k; apply(); });
 $('#rows').onclick = e => {
   const s = e.target.closest('[data-fav]'); if (s) { e.stopPropagation(); return toggleFav(+s.dataset.fav); }
   const tr = e.target.closest('tr'); if (tr) openPlayer(+tr.dataset.uid);
