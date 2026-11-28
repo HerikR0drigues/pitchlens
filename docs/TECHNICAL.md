@@ -125,6 +125,14 @@ contract ends in the current in-game year and no pre-contract elsewhere; *listed
 = has one (and, with a ceiling, at most that value). The score is `0.35·CA + 0.65·PA` up to 21 years, `0.5/0.5` up to 24,
 `0.75·CA + 0.25·PA` after that. A search by two players' known value ranges (shown in game) found no stored value either.
 
+## Estimated value
+
+FM does not store the transfer value (see the research notes), so `web/roles.js` `estValue()` estimates it:
+`454 · wage^0.9 · exp(0.07·r) · young · old`, where `r = CA − (17.94 + 10.725·ln wage)` capped to ±10 (how good the
+player is for what he earns), `young` is a potential bonus up to 23 years and `old` is −20 % per year after 32.
+Calibrated on the in-game value ranges of 16 Série B players (11 of 16 inside the range, mean error ~1.4×) and
+checked so stars stay plausible (~£150M for a CA 195 star). Free agents show no value.
+
 ## Role ratings and similar players
 
 Computed in the browser (`web/roles.js`) from the 54 attributes, which the list API sends as one compact string per

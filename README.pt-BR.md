@@ -42,6 +42,7 @@ e **não tem dependências**: só Python e o seu navegador.
 | ✎ **Anotações** | Escreva anotações em qualquer jogador; elas entram na busca |
 | 🧭 **Nota por função** | Nota de 0 a 100 para 24 funções (ponta, zagueiro construtor, matador…), melhor função de cada jogador, filtro e ordenação por função |
 | 👯 **Jogadores parecidos** | Em cada ficha: os jogadores com atributos mais parecidos, com idade, clube e salário |
+| 💵 **Valor estimado** | Coluna *Valor (est.)* ao lado do salário — estimativa do Pitchlens, já que o FM calcula o valor na tela em vez de guardar |
 | 💰 **Salário, multa e status no elenco** | Na tabela e na ficha, em £, €, $ ou R$, por semana ou por mês |
 | 💸 **Bons e baratos** | Filtro de *Custo* (livre, pré-contrato possível, à venda/empréstimo, multa rescisória) com teto de salário e de multa, e a lista *Bons e baratos* ordenada por uma nota que junta CA atual e potencial |
 | 📋 **Listas prontas** | Bons e baratos, promessas, melhores livres e jogadores com multa rescisória |

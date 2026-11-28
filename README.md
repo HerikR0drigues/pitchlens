@@ -41,6 +41,7 @@ open source and with **zero dependencies**: just Python and your browser.
 | ✎ **Notes** | Write notes on any player; they are searchable |
 | 🧭 **Role ratings** | A 0–100 rating for 24 roles (winger, ball-playing defender, poacher…), best role for every player, filter and sort by role |
 | 👯 **Similar players** | On every profile: the players with the closest attribute profile, with age, club and wage |
+| 💵 **Estimated value** | A *Value (est.)* column next to the wage — Pitchlens' own estimate, since FM calculates the value on screen instead of storing it |
 | 💰 **Wage, release clause, squad status** | In the table and on the profile, in £, €, $ or R$, per week or per month |
 | 💸 **Good & cheap** | A *Cost* filter (free agent, pre-contract possible, listed for sale/loan, release clause) with wage and clause ceilings, and a *Good & cheap* list sorted by a score that mixes current ability and potential |
 | 📋 **Ready-made lists** | Good & cheap, wonderkids, best free agents and players with a release clause |

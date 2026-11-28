@@ -177,7 +177,7 @@ function apply() {
   for (const p of ALL) {
     if (q) {                                   // global search: ignores every other filter
       if (!p._n.includes(q) && !p._c.includes(q) && !norm(p.pre_club || '').includes(q) && !noteMatch(p, q)) continue;
-      p.gap = p.pa - p.ca; p.age = p.birth_year ? ano - p.birth_year : 0; p.value = valueScore(p);
+      p.gap = p.pa - p.ca; p.age = p.birth_year ? ano - p.birth_year : 0; p.value = valueScore(p); p.est = estValue(p);
       cnt.all++; BASE.push(p); VIEW.push(p); continue;
     }
     if (F.cont && p.continent !== F.cont) continue;
@@ -191,7 +191,7 @@ function apply() {
     // without cost options the clause ceiling filters on its own; with them it only limits the 'release clause' option
     if (F.clauseMax && !costs.length && !(p.release > 0 && p.release <= F.clauseMax)) continue;
     if (role) p.role = roleRating(p, role);
-    p.gap = p.pa - p.ca; p.age = p.birth_year ? ano - p.birth_year : 0; p.value = valueScore(p);
+    p.gap = p.pa - p.ca; p.age = p.birth_year ? ano - p.birth_year : 0; p.value = valueScore(p); p.est = estValue(p);
     const inR = p.ca >= F.ca[0] && p.ca <= F.ca[1] && p.pa >= F.pa[0] && p.pa <= F.pa[1] && p.gap >= F.gap[0]
       && (p.gap <= F.gap[1] || F.gap[1] === 120) && p.age >= F.age[0] && p.age <= F.age[1];
     if (inR) {
@@ -209,6 +209,7 @@ function apply() {
   VIEW.sort((a, b) => {
     let x = a[k], y = b[k];
     if (k === 'pos0') { x = natural(a)[0]?.[1] ?? 99; y = natural(b)[0]?.[1] ?? 99; }
+    if (k === 'est') { x = a.est ?? -1; y = b.est ?? -1; }
     if (k === 'release') { x = a.release || Infinity; y = b.release || Infinity; if (x === y) return b.ca - a.ca; }
     return (typeof x === 'string' ? x.localeCompare(y) : x - y) * d || b.ca - a.ca;
   });
@@ -244,6 +245,7 @@ function render() {
     <td class="r gap" style="color:${p.gap >= 25 ? '#22c55e' : p.gap >= 10 ? 'var(--text)' : 'var(--faint)'}">${p.gap > 0 ? '+' : ''}${p.gap}</td>
     <td>${esc(p.nation)}<span class="flag">${esc(p.nation_code)}</span></td>
     <td class="r wage">${p.wage ? money(wageOf(p)) : '<span class="sub">—</span>'}</td>
+    <td class="r wage est">${p.est ? money(p.est) : '<span class="sub">—</span>'}</td>
     ${showClause() ? `<td class="r wage">${p.release ? money(p.release) : '<span class="sub">—</span>'}</td>` : ''}
     <td><div class="ct">${p.free ? `<span class="tag free">${esc(t('free'))}</span>` : `<span class="cn">${esc(p.club || '—')}</span><span class="cy">${p.contract_year}</span>`}${listTags(p)}</div></td></tr>`;
   }).join('');
@@ -292,7 +294,7 @@ async function openPlayer(uid) {
       <div><div class="k">${esc(t('wage'))}</div><div class="v sm">${esc(wageTxt(p))}</div></div>
       <div><div class="k">${esc(t('releaseClause'))}</div><div class="v sm">${esc(p.release ? money(p.release) : t('none'))}</div></div>
       <div><div class="k">${esc(t('squadStatus'))}</div><div class="v sm">${esc(sq || '—')}</div></div>
-      <div><div class="k">${esc(t('contractEnds'))}</div><div class="v sm">${p.contract_year || '—'}</div></div>
+      <div><div class="k" title="${esc(t('estTip'))}">${esc(t('estValue'))} ⓘ</div><div class="v sm">${(lp.est ?? estValue({...p, age: p.birth_year ? gameYear() - p.birth_year : 0})) ? esc(money(lp.est ?? estValue({...p, age: gameYear() - p.birth_year}))) : '—'}</div></div>
     </div></div>`}
     ${roles.length ? `<div class="grid2">
       <div class="card"><h4>${esc(t('bestRoles'))}</h4>${roles.map(([id, v, raw]) => `<div class="rbar" title="${esc(t('roleRawTip', {n: raw}))}"><span>${esc(roleName(id))}</span><i><b style="width:${v}%;background:${tone(v, 100)}"></b></i><em style="color:${tone(v, 100)}">${v}</em></div>`).join('')}<div class="sub" style="margin-top:8px">${esc(t('roleNote'))}</div></div>

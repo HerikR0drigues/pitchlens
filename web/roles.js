@@ -107,6 +107,22 @@ function bestRole(p) {
 }
 function topRoles(p, n = 6) { return ROLES.map(r => [r.id, roleRating(p, r), roleRaw(p, r)]).sort((a, b) => b[1] - a[1]).slice(0, n); }
 
+// Estimated transfer value (GBP). FM does not store a player's value, it computes it when it shows it, so this is
+// Pitchlens' own estimate, calibrated on the in-game value ranges of 16 Série B players (11 of 16 inside the game's
+// range, mean error ~1.4x) and checked against stars so it never explodes:
+//   base   = 454 * weekly wage^0.9                          (wage carries league and reputation)
+//   skill  = exp(0.07 * r), r = CA - expected CA for that wage, capped to +-10 (x0.5 .. x2)
+//            expected CA = 17.94 + 10.725 * ln(wage), fitted on ~44k contracted players of a real save
+//   young  = bonus for potential up to 23 years;  old = -20% per year after 32
+// Free agents have no transfer value (null).
+function estValue(p) {
+  if (!p.wage) return null;
+  const r = Math.max(-10, Math.min(10, p.ca - (17.94 + 10.725 * Math.log(p.wage))));
+  const young = p.age && p.age <= 23 ? 1 + Math.max(0, p.pa - p.ca) / 50 * (24 - p.age) / 6 : 1;
+  const old = p.age > 32 ? Math.pow(0.8, p.age - 32) : 1;
+  return Math.round(454 * Math.pow(p.wage, 0.9) * Math.exp(0.07 * r) * young * old);
+}
+
 // similar players: distance between attribute profiles (goalkeepers with goalkeepers, men with men, women with women)
 function similarPlayers(p, pool, n = 8) {
   const gk = (p.pos[0] || 0) >= 15, set = gk ? GK_SET : OUTFIELD_SET, A = attrsOf(p), out = [];

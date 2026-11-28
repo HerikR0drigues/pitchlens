@@ -12,7 +12,7 @@ const ctx = {LANG: () => 'en', console};
 vm.createContext(ctx);
 // i18n.js and roles.js only declare data and functions; tools.js needs FAV/ALL/PXY only inside functions
 vm.runInContext(web('i18n.js') + web('roles.js') + web('tools.js') +
-  ';globalThis.T = {ROLES, ROLE_BY_ID, roleRaw, roleRating, topRoles, bestRole, similarPlayers, pickXI, FORMATIONS, slotRating, ATTR_NAMES};', ctx);
+  ';globalThis.T = {ROLES, ROLE_BY_ID, roleRaw, roleRating, topRoles, bestRole, similarPlayers, pickXI, FORMATIONS, slotRating, ATTR_NAMES, estValue};', ctx);
 const T = ctx.T;
 
 const attrs = f => String.fromCharCode(...Array.from({length: 54}, (_, i) => 48 + f(i)));
@@ -53,6 +53,16 @@ test('similar players are sorted by closeness and skip the player himself', () =
   const out = T.similarPlayers(base, [base, far, near, gk, twin], 3);
   assert.deepStrictEqual(Array.from(out, ([o]) => o.uid), [2, 3]);
   assert.ok(out[0][1] > out[1][1]);
+});
+
+test('value estimate: none for free agents, grows with wage, bonus for young potential', () => {
+  assert.strictEqual(T.estValue({wage: 0, ca: 120, pa: 150, age: 20}), null);
+  const vet = T.estValue({wage: 5000, ca: 120, pa: 120, age: 30}), kid = T.estValue({wage: 5000, ca: 120, pa: 170, age: 18});
+  assert.ok(vet > 500000 && vet < 2000000, String(vet));
+  assert.ok(kid > vet * 1.5, 'young high-potential player should be worth more');
+  const star = T.estValue({wage: 640000, ca: 195, pa: 195, age: 27});
+  assert.ok(star > 50e6 && star < 250e6, 'stars stay plausible: ' + star);
+  assert.ok(T.estValue({wage: 400000, ca: 176, pa: 176, age: 34}) < star / 2, 'veterans lose value');
 });
 
 test('best XI fills every slot once with the best fits', () => {

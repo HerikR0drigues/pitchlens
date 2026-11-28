@@ -63,6 +63,7 @@ function openCompare() {
     ${row('PA', ps.map(p => p.pa), v => rating(v))}
     ${row(t('th_age'), ps.map(ageOf), v => v || '—', true)}
     ${row(t('wage'), ps.map(p => p.wage || 0), v => v ? esc(money(perMonth() ? v * 52 / 12 : v)) : '—', true)}
+    ${row(t('estValue'), ps.map(p => estValue({...p, age: p.birth_year ? gameYear() - p.birth_year : 0}) || 0), v => v ? esc(money(v)) : '—', true)}
     ${row(t('releaseClause'), ps.map(p => p.release || 0), v => v ? esc(money(v)) : '—', true)}
     ${row(t('contractEnds'), ps.map(p => p.contract_year || 0), v => v || esc(t('free')))}
     <div class="csec">${esc(t('roles'))}</div>
