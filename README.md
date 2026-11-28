@@ -42,7 +42,8 @@ open source and with **zero dependencies**: just Python and your browser.
 | 🧭 **Role ratings** | A 0–100 rating for 24 roles (winger, ball-playing defender, poacher…), best role for every player, filter and sort by role |
 | 👯 **Similar players** | On every profile: the players with the closest attribute profile, with age, club and wage |
 | 💰 **Wage, release clause, squad status** | In the table and on the profile, in £, €, $ or R$, per week or per month |
-| 📋 **Ready-made lists** | Wonderkids, best free agents, bargains (high CA, low wage) and players with a release clause |
+| 💸 **Good & cheap** | A *Cost* filter (free agent, pre-contract possible, listed for sale/loan, release clause) with wage and clause ceilings, and a *Good & cheap* list sorted by a score that mixes current ability and potential |
+| 📋 **Ready-made lists** | Good & cheap, wonderkids, best free agents and players with a release clause |
 | 🔁 **Loans** | Players on loan show where they are playing now (`Loan → Club`), with an *On loan now* filter; the best XI counts them for that club |
 | 🤝 **Pre-contracts** | See who already signed for another club (`→ Club`, with the start date) and filter by it |
 | 🖼️ **Player photos** | Uses your installed face pack automatically (initials when there is no photo) |

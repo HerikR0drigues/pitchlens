@@ -118,6 +118,13 @@ start date at `+0x4C` — the others keep the `1/1/1900` placeholder. Checked on
 - The squad-status names were matched with the in-game status menu, which lists them in code order, and checked
   against the age/CA/PA profile of each code (10 = young, high PA; 11 = younger, lower PA).
 
+## Cost filter and score
+
+All client-side (`web/app.js`): *free agent* = no contract and no pre-contract elsewhere; *pre-contract possible* =
+contract ends in the current in-game year and no pre-contract elsewhere; *listed* = transfer or loan list; *release clause*
+= has one (and, with a ceiling, at most that value). The score is `0.35·CA + 0.65·PA` up to 21 years, `0.5/0.5` up to 24,
+`0.75·CA + 0.25·PA` after that. A search by two players' known value ranges (shown in game) found no stored value either.
+
 ## Role ratings and similar players
 
 Computed in the browser (`web/roles.js`) from the 54 attributes, which the list API sends as one compact string per

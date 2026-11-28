@@ -43,7 +43,8 @@ e **não tem dependências**: só Python e o seu navegador.
 | 🧭 **Nota por função** | Nota de 0 a 100 para 24 funções (ponta, zagueiro construtor, matador…), melhor função de cada jogador, filtro e ordenação por função |
 | 👯 **Jogadores parecidos** | Em cada ficha: os jogadores com atributos mais parecidos, com idade, clube e salário |
 | 💰 **Salário, multa e status no elenco** | Na tabela e na ficha, em £, €, $ ou R$, por semana ou por mês |
-| 📋 **Listas prontas** | Promessas, melhores livres, pechinchas (CA alto, salário baixo) e jogadores com multa rescisória |
+| 💸 **Bons e baratos** | Filtro de *Custo* (livre, pré-contrato possível, à venda/empréstimo, multa rescisória) com teto de salário e de multa, e a lista *Bons e baratos* ordenada por uma nota que junta CA atual e potencial |
+| 📋 **Listas prontas** | Bons e baratos, promessas, melhores livres e jogadores com multa rescisória |
 | 🔁 **Empréstimos** | Emprestados mostram onde estão jogando (`Empr. → Clube`), com o filtro *Emprestados agora*; o Melhor XI conta eles nesse clube |
 | 🤝 **Pré-contratos** | Veja quem já assinou com outro clube (`→ Clube`, com a data de início) e filtre por isso |
 | 🖼️ **Fotos dos jogadores** | Usa o facepack que você tiver instalado, sozinho (iniciais quando não há foto) |

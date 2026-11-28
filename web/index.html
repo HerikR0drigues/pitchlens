@@ -34,6 +34,12 @@
 
     <div class="blk"><div class="lbl" data-i18n="situation"></div><div class="opts" id="sit"></div></div>
 
+    <div class="blk"><div class="lbl" data-i18n="cost"></div><div class="quick" id="cost"></div>
+      <div class="row2 money"><span data-i18n="wageMax"></span><span class="inp"><input class="mini" type="number" id="wageMax" min="0" step="1000" placeholder="—"><em id="wageUnit"></em></span></div>
+      <div class="row2 money"><span data-i18n="clauseMax"></span><span class="inp"><input class="mini" type="number" id="clauseMax" min="0" step="100000" placeholder="—"><em id="clauseUnit"></em></span></div>
+      <div class="quick" id="clauseQuick"></div>
+      <div class="hint" data-i18n="costHint"></div></div>
+
     <div class="blk"><div class="lbl" data-i18n="role"></div><div class="sel"><select id="role"></select></div>
       <div class="hint" data-i18n="roleHint"></div></div>
 
@@ -82,9 +88,9 @@
     <div class="tbl" id="tblWrap">
       <table><thead><tr>
         <th class="nosort" style="width:28px"></th>
-        <th data-k="name" data-i18n="th_player"></th><th data-k="pos0" data-i18n="th_pos"></th><th data-k="role" class="r rolecol" data-i18n="th_role"></th><th data-k="age" class="r" data-i18n="th_age"></th>
+        <th data-k="name" data-i18n="th_player"></th><th data-k="pos0" data-i18n="th_pos"></th><th data-k="role" class="r rolecol" data-i18n="th_role"></th><th data-k="value" class="r valcol" data-i18n="th_value"></th><th data-k="age" class="r" data-i18n="th_age"></th>
         <th data-k="ca" class="r" data-i18n="th_ca"></th><th data-k="pa" class="r" data-i18n="th_pa"></th><th data-k="gap" class="r" data-i18n="th_gap"></th>
-        <th data-k="nation" data-i18n="th_nation"></th><th data-k="wage" class="r" data-i18n="th_wage"></th><th data-k="club" data-i18n="th_contract"></th></tr></thead>
+        <th data-k="nation" data-i18n="th_nation"></th><th data-k="wage" class="r" data-i18n="th_wage"></th><th data-k="release" class="r clausecol" data-i18n="th_release"></th><th data-k="club" data-i18n="th_contract"></th></tr></thead>
         <tbody id="rows"></tbody></table>
       <div class="empty" id="empty" style="display:none"></div>
       <button class="btn loadmore" id="more" style="display:none" data-i18n="loadMore"></button>

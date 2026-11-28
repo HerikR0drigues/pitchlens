@@ -16,15 +16,26 @@ const RADAR = {
           ['ax_mental',[53,18,52,20]],['ax_physical',[46,36,50]]],
 };
 const DEF = {q:'',sit:'free',cont:'',nat:'',sex:'M',foot:'',pos:[],posMin:15,ca:[0,200],pa:[0,200],gap:[0,120],age:[15,40],
-             year:null,sort:'ca',dir:-1,theme:null,lang:null,role:'',list:'',cur:null,per:null};
+             year:null,sort:'ca',dir:-1,theme:null,lang:null,role:'',list:'',cur:null,per:null,cost:[],wageMax:0,clauseMax:0};
 // ready-made lists: filter overrides + an extra rule
+const ALL_RANGES = {ca: [0, 200], pa: [0, 200], gap: [0, 120]};
 const LISTS = {
-  prospects: {sit: 'all', age: [15, 21], pa: [140, 200], ca: [0, 200], gap: [0, 120], sort: 'pa', dir: -1},
-  freeBest: {sit: 'free', age: [18, 33], ca: [0, 200], pa: [0, 200], gap: [0, 120], sort: 'ca', dir: -1},
-  bargains: {sit: 'all', age: [18, 29], ca: [0, 200], pa: [0, 200], gap: [0, 120], sort: 'bargain', dir: -1},
-  release: {sit: 'all', age: [15, 40], ca: [0, 200], pa: [0, 200], gap: [0, 120], sort: 'ca', dir: -1},
+  // starts at about a Brazilian Série B budget: wage up to ~R$150k/month, release clause up to ~R$7M (editable)
+  cheapGood: {...ALL_RANGES, sit: 'all', age: [17, 26], cost: ['free', 'ending', 'listed', 'clause'], wageMax: 5000, clauseMax: 1000000, sort: 'value', dir: -1},
+  prospects: {...ALL_RANGES, sit: 'all', age: [15, 21], pa: [140, 200], cost: [], wageMax: 0, clauseMax: 0, sort: 'pa', dir: -1},
+  freeBest: {...ALL_RANGES, sit: 'free', age: [18, 33], cost: [], wageMax: 0, clauseMax: 0, sort: 'ca', dir: -1},
+  release: {...ALL_RANGES, sit: 'all', age: [15, 40], cost: ['clause'], wageMax: 0, clauseMax: 0, sort: 'value', dir: -1},
 };
-const LIST_RULE = {bargains: p => !p.free && p.wage > 0, release: p => p.release > 0};
+// how a player can be signed cheaply; someone who already signed a pre-contract elsewhere is not available
+const COSTS = ['free', 'ending', 'listed', 'clause'];
+const COST_OK = {
+  free: p => p.free && !p.pre_club,
+  ending: (p, ano) => !p.free && p.contract_year === ano && !p.pre_club,
+  listed: p => p.transfer_listed || p.loan_listed,
+  clause: p => p.release > 0 && (!F.clauseMax || p.release <= F.clauseMax),
+};
+// one number for "good now and good later": potential weighs more for young players
+const valueScore = p => Math.round(p.age <= 21 ? .35 * p.ca + .65 * p.pa : p.age <= 24 ? .5 * p.ca + .5 * p.pa : .75 * p.ca + .25 * p.pa);
 // money is stored in GBP; rates are approximate (BRL matches FM27's own rate)
 const CUR = {GBP: ['£', 1], EUR: ['€', 1.17], USD: ['$', 1.27], BRL: ['R$', 6.951]};
 const SQUAD = {1: 'sq_star', 2: 'sq_important', 3: 'sq_regular', 4: 'sq_squad', 5: 'sq_impact', 7: 'sq_fringe', 10: 'sq_hot', 11: 'sq_young', 15: 'sq_gk1'};
@@ -37,6 +48,7 @@ if (!['','L','R','B'].includes(F.foot)) F.foot = '';
 let FAV = new Set(store('fav') || []);
 let ALL = [], VIEW = [], BASE = [], META = null, shown = 0, lastErr = null, BY_UID = new Map(), GROUPS = {};
 if (!ROLE_BY_ID[F.role]) F.role = ''; if (!LISTS[F.list]) F.list = '';
+if (!Array.isArray(F.cost)) F.cost = []; F.cost = F.cost.filter(c => COSTS.includes(c)); if (F.sort === 'bargain') F.sort = 'value';
 const PAGE = 200;
 
 // ---------- helpers
@@ -60,6 +72,12 @@ function money(gbp) {
   const txt = v >= 1e6 ? f(v / 1e6, v >= 1e7 ? 1 : 2) + (pt ? ' mi' : 'M') : v >= 1e3 ? f(v / 1e3, v >= 1e5 ? 0 : 1) + (pt ? ' mil' : 'K') : f(v, 0);
   return sym + ' ' + txt;
 }
+// GBP <-> the chosen currency (wages also follow the week/month choice)
+// quick ceilings for the release clause, in round numbers of each currency
+const CLAUSE_STEPS = {BRL: [5e5, 1e6, 2e6, 5e6, 1e7], GBP: [1e5, 25e4, 5e5, 1e6, 2e6], EUR: [1e5, 25e4, 5e5, 1e6, 25e5], USD: [1e5, 25e4, 5e5, 1e6, 25e5]};
+const round3 = v => { if (!v) return ''; const k = 10 ** Math.max(0, Math.floor(Math.log10(v)) - 2); return Math.round(v / k) * k; };
+const toCur = (gbp, wage) => gbp * CUR[curCode()][1] * (wage && perMonth() ? 52 / 12 : 1);
+const fromCur = (v, wage) => v / CUR[curCode()][1] / (wage && perMonth() ? 52 / 12 : 1);
 const wageOf = p => p.wage ? (perMonth() ? p.wage * 52 / 12 : p.wage) : 0;
 const wageTxt = p => p.wage ? money(wageOf(p)) + (perMonth() ? t('perMonth') : t('perWeek')) : '—';
 const rating100 = v => { const c = tone(v, 100); return `<span class="rating" style="background:${c}1f;color:${c}">${v ?? '—'}</span>`; };
@@ -77,6 +95,7 @@ function footTag(p) { const f = FOOT_LBL[p.foot]; if (!f) return ''; const title
 function preDate(p) { if (!p.pre_year) return ''; if (!p.pre_day) return String(p.pre_year); const d = new Date(p.pre_year, 0, p.pre_day); return d.toLocaleDateString(LANG() === 'pt' ? 'pt-BR' : 'en-GB'); }
 function preTag(p) { return p.pre_club ? `<span class="tag pre" title="${esc(t('preTitle', {c: p.pre_club, d: preDate(p)}))}">→ ${esc(p.pre_club)}</span>` : ''; }
 function loanTag(p) { return p.loan_club ? `<span class="tag onloan" title="${esc(t('onLoanTitle', {c: p.loan_club}))}">${esc(t('onLoanShort'))} ${esc(p.loan_club)}</span>` : ''; }
+const showClause = () => F.cost.includes('clause') || !!F.clauseMax || F.sort === 'release';
 function listTags(p) { return loanTag(p) + preTag(p) + (p.transfer_listed ? `<span class="tag tl">${LANG() === 'pt' ? 'Transf.' : 'TL'}</span>` : '') + (p.loan_listed ? `<span class="tag ll">${LANG() === 'pt' ? 'Empr.' : 'LL'}</span>` : ''); }
 const STAR = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="m12 2.8 2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2l-5.7 3.1 1.2-6.4-4.7-4.4 6.4-.8z"/></svg>';
 function toast(msg) { const el = $('#toast'); el.textContent = msg; el.classList.add('on'); clearTimeout(toast.tm); toast.tm = setTimeout(() => el.classList.remove('on'), 1600); }
@@ -94,6 +113,8 @@ function applyLang() {
   $$('[data-i18n-title]').forEach(el => el.title = t(el.dataset.i18nTitle));
   $('#lang').textContent = LANG() === 'pt' ? 'PT' : 'EN';
   buildSit(); buildPitch();
+  $('#cost').innerHTML = COSTS.map(c => `<button data-v="${c}">${esc(t('cost_' + c))}</button>`).join('');
+  $$('#cost button').forEach(b => b.onclick = () => { const c = b.dataset.v; F.cost = F.cost.includes(c) ? F.cost.filter(x => x !== c) : [...F.cost, c]; F.list = ''; sync(); apply(); });
   $('#role').innerHTML = `<option value="">${esc(t('anyRole'))}</option>` + ROLES.map(r => `<option value="${r.id}">${esc(roleName(r.id))}</option>`).join('');
   $('#lists').innerHTML = Object.keys(LISTS).map(k => `<button data-v="${k}">${esc(t('list_' + k))}</button>`).join('');
   $$('#lists button').forEach(b => b.onclick = () => {
@@ -148,7 +169,7 @@ function buildPitch() {
 
 // ---------- filtering
 function apply() {
-  const q = norm(F.q), ano = gameYear(), pm = +F.posMin, role = ROLE_BY_ID[F.role], rule = LIST_RULE[F.list];
+  const q = norm(F.q), ano = gameYear(), pm = +F.posMin, role = ROLE_BY_ID[F.role], costs = F.cost.map(c => COST_OK[c]);
   const cnt = {free:0, ending:0, transfer:0, loan:0, pre:0, onloan:0, fav:0, all:0};
   VIEW = []; BASE = [];
   const sitOk = p => F.sit === 'all' || (F.sit === 'free' && p.free) || (F.sit === 'ending' && !p.free && p.contract_year === ano)
@@ -156,7 +177,7 @@ function apply() {
   for (const p of ALL) {
     if (q) {                                   // global search: ignores every other filter
       if (!p._n.includes(q) && !p._c.includes(q) && !norm(p.pre_club || '').includes(q) && !noteMatch(p, q)) continue;
-      p.gap = p.pa - p.ca; p.age = p.birth_year ? ano - p.birth_year : 0;
+      p.gap = p.pa - p.ca; p.age = p.birth_year ? ano - p.birth_year : 0; p.value = valueScore(p);
       cnt.all++; BASE.push(p); VIEW.push(p); continue;
     }
     if (F.cont && p.continent !== F.cont) continue;
@@ -165,10 +186,12 @@ function apply() {
     if (F.foot && p.foot !== F.foot && !(p.foot === 'B' && F.foot !== 'B')) continue;
     if (F.pos.length && !F.pos.some(i => p.pos[i] >= pm)) continue;
     if (role && !role.pos.some(i => p.pos[i] >= pm)) continue;
-    if (rule && !rule(p)) continue;
+    if (costs.length && !costs.some(ok => ok(p, ano))) continue;
+    if (F.wageMax && p.wage > F.wageMax) continue;
+    // without cost options the clause ceiling filters on its own; with them it only limits the 'release clause' option
+    if (F.clauseMax && !costs.length && !(p.release > 0 && p.release <= F.clauseMax)) continue;
     if (role) p.role = roleRating(p, role);
-    p.bargain = p.ca - 22 * Math.log10(Math.max(p.wage || 0, 50));
-    p.gap = p.pa - p.ca; p.age = p.birth_year ? ano - p.birth_year : 0;
+    p.gap = p.pa - p.ca; p.age = p.birth_year ? ano - p.birth_year : 0; p.value = valueScore(p);
     const inR = p.ca >= F.ca[0] && p.ca <= F.ca[1] && p.pa >= F.pa[0] && p.pa <= F.pa[1] && p.gap >= F.gap[0]
       && (p.gap <= F.gap[1] || F.gap[1] === 120) && p.age >= F.age[0] && p.age <= F.age[1];
     if (inR) {
@@ -186,13 +209,14 @@ function apply() {
   VIEW.sort((a, b) => {
     let x = a[k], y = b[k];
     if (k === 'pos0') { x = natural(a)[0]?.[1] ?? 99; y = natural(b)[0]?.[1] ?? 99; }
+    if (k === 'release') { x = a.release || Infinity; y = b.release || Infinity; if (x === y) return b.ca - a.ca; }
     return (typeof x === 'string' ? x.localeCompare(y) : x - y) * d || b.ca - a.ca;
   });
   RANGES.forEach(([id]) => drawHist($('#' + id)));
   shown = PAGE; render(); kpis(); countFilters(); store('filters', F);
 }
 function countFilters() {
-  let n = 0; if (F.role) n++; if (F.list) n++; if (F.sit !== 'all') n++; if (F.cont) n++; if (F.nat) n++; if (F.sex) n++; if (F.foot) n++; if (F.pos.length) n++; if (F.q) n++;
+  let n = 0; if (F.role) n++; if (F.list) n++; if (F.cost.length) n++; if (F.wageMax) n++; if (F.clauseMax) n++; if (F.sit !== 'all') n++; if (F.cont) n++; if (F.nat) n++; if (F.sex) n++; if (F.foot) n++; if (F.pos.length) n++; if (F.q) n++;
   RANGES.forEach(([, k, , mn, mx]) => { if (F[k][0] !== mn || F[k][1] !== mx) n++; });
   $('#fcount').textContent = n;
 }
@@ -215,11 +239,12 @@ function render() {
     return `<tr data-uid="${p.uid}"><td><button class="star ${FAV.has(p.uid) ? 'on' : ''}" data-fav="${p.uid}" title="${esc(t(FAV.has(p.uid) ? 'removeFav' : 'addFav'))}">${STAR}</button></td>
     <td><div class="pl">${avatar(p)}<div><div class="nm">${esc(p.name)}${noteTag(p)}</div><div class="sub">${p.female ? esc(t('female_tag')) + ' · ' : ''}${esc(p.nation_code || '')}${p.nation_code ? ' · ' : ''}ID ${p.uid}</div></div></div></td>
     <td><div class="poss">${footTag(p)}${nat.map(([v, i]) => `<span class="pt ${v >= 18 ? 'n' : ''}">${posName(i)}</span>`).join('') || '<span class="sub">—</span>'}</div><div class="brole">${p.a ? esc(roleName(bestRole(p))) + ' · ' + p._bestR : ''}</div></td>
-    ${F.role ? `<td class="r">${rating100(p.role)}</td>` : ''}
+    ${F.role ? `<td class="r">${rating100(p.role)}</td>` : ''}${F.sort === 'value' ? `<td class="r">${rating(p.value)}</td>` : ''}
     <td class="r">${p.age || '—'}</td><td class="r">${progTag(p)}${rating(p.ca)}</td><td class="r">${rating(p.pa)}</td>
     <td class="r gap" style="color:${p.gap >= 25 ? '#22c55e' : p.gap >= 10 ? 'var(--text)' : 'var(--faint)'}">${p.gap > 0 ? '+' : ''}${p.gap}</td>
     <td>${esc(p.nation)}<span class="flag">${esc(p.nation_code)}</span></td>
     <td class="r wage">${p.wage ? money(wageOf(p)) : '<span class="sub">—</span>'}</td>
+    ${showClause() ? `<td class="r wage">${p.release ? money(p.release) : '<span class="sub">—</span>'}</td>` : ''}
     <td><div class="ct">${p.free ? `<span class="tag free">${esc(t('free'))}</span>` : `<span class="cn">${esc(p.club || '—')}</span><span class="cy">${p.contract_year}</span>`}${listTags(p)}</div></td></tr>`;
   }).join('');
   const empty = $('#empty');
@@ -392,12 +417,22 @@ function sync() {
   $$('#per button').forEach(b => b.classList.toggle('on', b.dataset.v === (perMonth() ? 'm' : 'w')));
   $$('#lists button').forEach(b => b.classList.toggle('on', b.dataset.v === F.list));
   document.body.classList.toggle('hasrole', !!F.role);
+  document.body.classList.toggle('hasvalue', F.sort === 'value');
+  document.body.classList.toggle('hasclause', showClause());
+  $('#clauseQuick').innerHTML = CLAUSE_STEPS[curCode()].map(v => { const g = Math.round(fromCur(v)); return `<button data-v="${g}" class="${Math.abs(g - F.clauseMax) < 2 ? 'on' : ''}">${esc(t('upTo'))} ${esc(money(g))}</button>`; }).join('');
+  $$('#clauseQuick button').forEach(b => b.onclick = () => { const g = +b.dataset.v; F.clauseMax = Math.abs(g - F.clauseMax) < 2 ? 0 : g; if (F.clauseMax && F.sort !== 'value') { F.sort = 'release'; F.dir = 1; } sync(); apply(); });
+  $$('#cost button').forEach(b => b.classList.toggle('on', F.cost.includes(b.dataset.v)));
+  if (document.activeElement !== $('#wageMax')) $('#wageMax').value = F.wageMax ? round3(toCur(F.wageMax, true)) : '';
+  if (document.activeElement !== $('#clauseMax')) $('#clauseMax').value = F.clauseMax ? round3(toCur(F.clauseMax)) : '';
+  $('#wageUnit').textContent = CUR[curCode()][0] + (perMonth() ? t('perMonth') : t('perWeek')); $('#clauseUnit').textContent = CUR[curCode()][0];
   $$('#pitch .pc').forEach(b => b.classList.toggle('on', F.pos.includes(+b.dataset.p)));
   RANGES.forEach(([id]) => $('#' + id)._paint && $('#' + id)._paint());
 }
 $('#q').oninput = e => { F.q = e.target.value; debounced(); };
 $('#yearInput').oninput = e => { F.year = +e.target.value || null; $('#yearHint').textContent = ''; debounced(); };
 $('#nat').onchange = e => { F.nat = e.target.value; sync(); apply(); };
+$('#wageMax').oninput = e => { F.wageMax = +e.target.value > 0 ? Math.round(fromCur(+e.target.value, true)) : 0; debounced(); };
+$('#clauseMax').oninput = e => { F.clauseMax = +e.target.value > 0 ? Math.round(fromCur(+e.target.value)) : 0; sync(); debounced(); };
 $('#role').onchange = e => { F.role = e.target.value; if (F.role) { F.sort = 'role'; F.dir = -1; } else if (F.sort === 'role') F.sort = 'ca'; sync(); apply(); };
 $('#cur').onchange = e => { F.cur = e.target.value; F.per = null; sync(); apply(); };
 $$('#per button').forEach(b => b.onclick = () => { F.per = b.dataset.v; sync(); apply(); });
@@ -429,12 +464,13 @@ document.addEventListener('keydown', e => {
   if (e.key === '/' && !['INPUT', 'SELECT'].includes(document.activeElement.tagName)) { e.preventDefault(); $('#q').focus(); }
 });
 
-// ---------- boot (URL params win: ?lang=en|pt&theme=dark|light&sit=<situation>&q=<search>&cont=<continent>&role=<role id>&photos=0&p=<uid>&xi=<club>&form=<formation>&cmp=<uid,uid>)
+// ---------- boot (URL params win: ?lang=en|pt&theme=dark|light&sit=<situation>&q=<search>&cont=<continent>&list=<ready-made list>&role=<role id>&photos=0&p=<uid>&xi=<club>&form=<formation>&cmp=<uid,uid>)
 if (URLP.get('lang')) F.lang = URLP.get('lang') === 'pt' ? 'pt' : 'en';
 if (!F.lang) F.lang = (navigator.language || 'en').toLowerCase().startsWith('pt') ? 'pt' : 'en';
 if (SIT.some(s => s[0] === URLP.get('sit'))) F.sit = URLP.get('sit');
 if (URLP.has('q')) F.q = URLP.get('q');
 if (URLP.has('cont')) F.cont = URLP.get('cont');
+if (LISTS[URLP.get('list')]) Object.assign(F, LISTS[URLP.get('list')], {list: URLP.get('list')});
 if (ROLE_BY_ID[URLP.get('role')]) { F.role = URLP.get('role'); F.sort = 'role'; F.dir = -1; }
 if (URLP.get('theme')) F.theme = URLP.get('theme') === 'light' ? 'light' : 'dark';
 toolsInit(); applyTheme(); applyLang(); sync(); setStatus(); render();
