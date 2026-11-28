@@ -9,6 +9,7 @@ preto, cinza e branco quente na marca; o roxo fica só dentro do app, onde carre
 |---|---|
 | `pitchlens-mark.svg` | A marca (o "P"), sem fundo, preenchida com `currentColor`. Fonte de verdade do desenho. |
 | `pitchlens-logo-dark.svg` · `pitchlens-logo-light.svg` | Logo horizontal: marca + nome + tagline, nos dois temas. |
+| `web/pitchlens.ico` | Ícone do app (exe, atalhos, barra de tarefas): P branco quente sobre quadrado quase preto `#161616`, 16–256 px, para aparecer em fundo claro e escuro. Gerado por `tools/make_icon.py`. |
 | `web/favicon.svg` | Favicon: só o P, branco quente; fica preto quando o navegador está no tema claro. |
 | `web/index.html` | A marca inline no topo do app (mesmos caminhos do SVG), na cor do texto. |
 
